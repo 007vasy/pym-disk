@@ -1,10 +1,14 @@
-name: Rust Release
+name: Build, bump tag version and release
+
 on:
-  release:
-    types: [released]
+  pull_request:
+    branches:
+      - main
+    types: [closed]
 
 jobs:
   release:
+  if: github.event.pull_request.merged == true
     name: Build and Release
     runs-on: ubuntu-latest
     steps:
@@ -18,7 +22,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WITH_V: true
         id: bump_version
-      - name: Upload Linux binary to release
+      - name: Upload binary to release
         uses: svenstaro/upload-release-action@v1-release
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
@@ -26,3 +30,4 @@ jobs:
           asset_name: pym-disk-linux-amd64
           tag: ${{ steps.bump_version.outputs.new_tag }}
           overwrite: true
+          
