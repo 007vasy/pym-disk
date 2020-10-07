@@ -1,4 +1,4 @@
-name: Build, bump tag version and release
+name: Release
 
 on:
   pull_request:
