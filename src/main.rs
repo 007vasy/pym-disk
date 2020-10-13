@@ -8,9 +8,7 @@ use rusoto_ec2::{
   };
 use uuid::Uuid;
 
-
-
-pub fn spawn(worker_type: String) {
+async fn spawn(worker_type: String) {
     println!("worker type: {}", worker_type);
   
     let client_token = format!("{}-{}", worker_type, Uuid::new_v4());
@@ -31,7 +29,7 @@ pub fn spawn(worker_type: String) {
       ..Default::default()
     };
   
-    match client.run_instances(run_instances_request).unwrap() {
+    match client.run_instances(run_instances_request).await {
       Ok(output) => {
         match output.instances {
           Some(instances) => {
@@ -49,6 +47,8 @@ pub fn spawn(worker_type: String) {
     }
   }
 
-fn main() {
-    spawn("BenTest".to_string())
+#[tokio::main]
+async fn main() {
+  spawn("BenTest".to_string()).await;
+
 }
