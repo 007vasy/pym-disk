@@ -1,16 +1,16 @@
 use uuid::Uuid;
 use std::default::Default;
-
+use std::io::{stdin,stdout,Write};
 use rusoto_core::{Region, HttpClient};
-
 use rusoto_ec2::{Ec2Client, Ec2, RunInstancesRequest};
+use rusoto_sts::StsClient;
+use rusoto_sts::StsAssumeRoleSessionCredentialsProvider;
 use rusoto_credential::StaticProvider;
 mod setup_tokio;
 use setup_tokio::create_runtime;
 
 mod setup_aws_credentials;
 use setup_aws_credentials::fetch_credentials;
-
 
 pub fn spawn(worker_type: String) {
     println!("worker type: {}", worker_type);
@@ -31,7 +31,30 @@ pub fn spawn(worker_type: String) {
         None,
     );
 
-    let client = Ec2Client::new_with(HttpClient::new().unwrap(), cred_provider, Region::ApSoutheast2);
+    let sts = StsClient::new_with(HttpClient::new().unwrap(),cred_provider,Region::ApSoutheast2);
+    
+    let mut provider = StsAssumeRoleSessionCredentialsProvider::new(
+        sts,
+        "arn:aws:iam::667213777749:role/OrganizationAccountAccessRole".to_owned(),
+        "default".to_owned(),
+        None, None, None,
+        Some("arn:aws:iam::355186423092:mfa/bence.vass".to_owned()),
+    );
+    let mut s=String::new();
+    print!("Please enter the MFA code: ");
+    let _=stdout().flush();
+    stdin().read_line(&mut s).expect("Did not enter a correct string");
+    if let Some('\n')=s.chars().next_back() {
+        s.pop();
+    }
+    if let Some('\r')=s.chars().next_back() {
+        s.pop();
+    }
+    println!("You typed: {}",s);
+    provider.set_mfa_code(s);
+
+
+    let client = Ec2Client::new_with(HttpClient::new().unwrap(), provider, Region::ApSoutheast2);
 
     let run_instances_request: RunInstancesRequest = RunInstancesRequest {
       min_count: 1,

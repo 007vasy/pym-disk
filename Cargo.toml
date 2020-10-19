@@ -10,5 +10,6 @@ edition = "2018"
 rusoto_ec2 = "0.45.0"
 rusoto_core = { version = "0.45.0", default_features = false }
 rusoto_credential = { version = "0.45.0" }
+rusoto_sts = { version = "0.45.0" }
 uuid = { version = "0.8", features = ["v4"] }
 tokio = { version = "0.2.22", features = ["full"] }    
