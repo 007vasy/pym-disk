@@ -13,3 +13,4 @@ rusoto_credential = { version = "0.45.0" }
 rusoto_sts = { version = "0.45.0" }
 uuid = { version = "0.8", features = ["v4"] }
 tokio = { version = "0.2.22", features = ["full"] }    
+sysinfo = "0.15.3"
