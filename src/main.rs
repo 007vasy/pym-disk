@@ -103,20 +103,20 @@ pub fn spawn(worker_type: String) {
     println!("total swap  : {} KB", system.get_total_swap());
     println!("used swap   : {} KB", system.get_used_swap());
 
+    let mut volume_id_holder = String::new();
     let create_volume_rqst = CreateVolumeRequest {
-      
       availability_zone: "ap-southeast-2b".to_string(), //Todo get it from config
-      size: 8, // increase with every new addition, Fibonacci?
-      volume_type: "gp2".to_string(), //Todo get it from config
-    }
+      size: Some(8), // increase with every new addition, Fibonacci?
+      volume_type: Some("gp2".to_string()), //Todo get it from config
+      ..Default::default()
+    };
     match rt.block_on(client.create_volume(create_volume_rqst)) {
       Ok(output) => {
-        match output.volumes {
-          Some(volumes) => {
-            println!("instances instantiated:");
-            for volume in volumes {
-              println!("{:?}", volume.volume_id);
-            }
+        match output.volume_id {
+          Some(volume_id) => {
+
+              volume_id_holder = volume_id;
+
           }
           None => println!("no instances instantiated!"),
         }
@@ -129,16 +129,16 @@ pub fn spawn(worker_type: String) {
     let attach_volume_rqst = AttachVolumeRequest {
       device: "/dev/xvdf".to_string(),
       instance_id: "i-0cb68a3d1a173fe0c".to_string(), // TODO get it from config
-    }
+      volume_id: volume_id_holder,
+      ..Default::default()
+    };
 
-    match rt.block_on(client.run_instances(attach_volume_rqst)) {
+    match rt.block_on(client.attach_volume(attach_volume_rqst)) {
       Ok(output) => {
-        match output.volumes {
-          Some(volumes) => {
-            println!("instances instantiated:");
-            for volume in volumes {
-              println!("{:?}", volume.volume_id);
-            }
+        match output.volume_id {
+          Some(volume_id) => {
+            println!("{}", volume_id);
+
           }
           None => println!("no instances instantiated!"),
         }
@@ -148,10 +148,6 @@ pub fn spawn(worker_type: String) {
       }
     }
       
-
-    let attach_volume_rqst = AttachVolumeRequest {
-
-    }
 
     for disk in system.get_disks() {
       println!("{:?}", disk);
