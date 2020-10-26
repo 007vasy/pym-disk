@@ -2,7 +2,7 @@ use uuid::Uuid;
 use std::default::Default;
 use std::io::{stdin,stdout,Write};
 use rusoto_core::{Region, HttpClient};
-use rusoto_ec2::{Ec2Client, Ec2, RunInstancesRequest};
+use rusoto_ec2::{Ec2Client, Ec2, RunInstancesRequest, CreateVolumeRequest, AttachVolumeRequest};
 use rusoto_sts::StsClient;
 use rusoto_sts::StsAssumeRoleSessionCredentialsProvider;
 use rusoto_credential::StaticProvider;
@@ -60,19 +60,19 @@ pub fn spawn(worker_type: String) {
     // let client = Ec2Client::new_with(HttpClient::new().unwrap(), provider, Region::ApSoutheast2);
     let client = Ec2Client::new_with(HttpClient::new().unwrap(), cred_provider, Region::ApSoutheast2);
 
-    let run_instances_request: RunInstancesRequest = RunInstancesRequest {
-      min_count: 1,
-      max_count: 1,
-      key_name: Some("pym-disk-temp-key".to_string()),
-      client_token: Some(client_token),
-      image_id: Some("ami-0f96495a064477ffb".to_string()),
-      instance_type: Some("t2.micro".to_string()),
-      //security_groups: Some(vec!["rdp-only".to_string(), "ssh-only".to_string()]),
-      //security_group_ids: Some(vec!["sg-3bd7bf41".to_string(), "sg-s5bd6be21".to_string()]),
-      subnet_id: Some("subnet-03e605e7cac782459".to_string()),
-      instance_initiated_shutdown_behavior: Some("stop".to_string()),
-      ..Default::default()
-    };
+    // let run_instances_request: RunInstancesRequest = RunInstancesRequest {
+    //   min_count: 1,
+    //   max_count: 1,
+    //   key_name: Some("pym-disk-temp-key".to_string()),
+    //   client_token: Some(client_token),
+    //   image_id: Some("ami-0f96495a064477ffb".to_string()),
+    //   instance_type: Some("t2.micro".to_string()),
+    //   //security_groups: Some(vec!["rdp-only".to_string(), "ssh-only".to_string()]),
+    //   //security_group_ids: Some(vec!["sg-3bd7bf41".to_string(), "sg-s5bd6be21".to_string()]),
+    //   subnet_id: Some("subnet-03e605e7cac782459".to_string()),
+    //   instance_initiated_shutdown_behavior: Some("stop".to_string()),
+    //   ..Default::default()
+    // };
 
     
     let mut system = sysinfo::System::new_all();
@@ -95,6 +95,68 @@ pub fn spawn(worker_type: String) {
         println!("{:?}", disk);
         println!("{}",disk.get_available_space());
         println!("{}",disk.get_total_space());
+    }
+
+    // And finally the RAM and SWAP information:
+    println!("total memory: {} KB", system.get_total_memory());
+    println!("used memory : {} KB", system.get_used_memory());
+    println!("total swap  : {} KB", system.get_total_swap());
+    println!("used swap   : {} KB", system.get_used_swap());
+
+    let create_volume_rqst = CreateVolumeRequest {
+      
+      availability_zone: "ap-southeast-2b".to_string(), //Todo get it from config
+      size: 8, // increase with every new addition, Fibonacci?
+      volume_type: "gp2".to_string(), //Todo get it from config
+    }
+    match rt.block_on(client.create_volume(create_volume_rqst)) {
+      Ok(output) => {
+        match output.volumes {
+          Some(volumes) => {
+            println!("instances instantiated:");
+            for volume in volumes {
+              println!("{:?}", volume.volume_id);
+            }
+          }
+          None => println!("no instances instantiated!"),
+        }
+      }
+      Err(error) => {
+        println!("Error: {:?}", error);
+      }
+    }
+
+    let attach_volume_rqst = AttachVolumeRequest {
+      device: "/dev/xvdf".to_string(),
+      instance_id: "i-0cb68a3d1a173fe0c".to_string(), // TODO get it from config
+    }
+
+    match rt.block_on(client.run_instances(attach_volume_rqst)) {
+      Ok(output) => {
+        match output.volumes {
+          Some(volumes) => {
+            println!("instances instantiated:");
+            for volume in volumes {
+              println!("{:?}", volume.volume_id);
+            }
+          }
+          None => println!("no instances instantiated!"),
+        }
+      }
+      Err(error) => {
+        println!("Error: {:?}", error);
+      }
+    }
+      
+
+    let attach_volume_rqst = AttachVolumeRequest {
+
+    }
+
+    for disk in system.get_disks() {
+      println!("{:?}", disk);
+      println!("{}",disk.get_available_space());
+      println!("{}",disk.get_total_space());
     }
 
     // And finally the RAM and SWAP information:
