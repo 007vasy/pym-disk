@@ -3,7 +3,7 @@ use std::default::Default;
 use std::io::{stdin,stdout,Write};
 use std::{thread, time};
 use rusoto_core::{Region, HttpClient};
-use rusoto_ec2::{Ec2Client, Ec2, RunInstancesRequest, CreateVolumeRequest, AttachVolumeRequest};
+use rusoto_ec2::{Ec2Client, Ec2, RunInstancesRequest, CreateVolumeRequest, AttachVolumeRequest, TagSpecification, Tag};
 use rusoto_sts::StsClient;
 use rusoto_sts::StsAssumeRoleSessionCredentialsProvider;
 use rusoto_credential::StaticProvider;
@@ -109,18 +109,18 @@ pub fn spawn(worker_type: String) {
       availability_zone: "ap-southeast-2b".to_string(), //Todo get it from config
       size: Some(8), // increase with every new addition, Fibonacci?
       volume_type: Some("gp2".to_string()), //Todo get it from config
-      tag_specifications: Some([
+      tag_specifications: Some(vec!{
         TagSpecification{
           resource_type:Some("volume".to_string()),
-          tags:[
-            {
+          tags:Some(vec!{
+            Tag{
               key:Some("createdBy".to_string()),
               value:Some("pym-disk".to_string())
             }
-            ]
-          }
-          ]
-        )
+          })
+        }
+        }
+        ),
       ..Default::default() // add tag_specifications for easier clean up
     };
     match rt.block_on(client.create_volume(create_volume_rqst)) {
