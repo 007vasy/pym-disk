@@ -109,7 +109,19 @@ pub fn spawn(worker_type: String) {
       availability_zone: "ap-southeast-2b".to_string(), //Todo get it from config
       size: Some(8), // increase with every new addition, Fibonacci?
       volume_type: Some("gp2".to_string()), //Todo get it from config
-      ..Default::default()
+      tag_specifications: Some([
+        TagSpecification{
+          resource_type:Some("volume".to_string()),
+          tags:[
+            {
+              key:Some("createdBy".to_string()),
+              value:Some("pym-disk".to_string())
+            }
+            ]
+          }
+          ]
+        )
+      ..Default::default() // add tag_specifications for easier clean up
     };
     match rt.block_on(client.create_volume(create_volume_rqst)) {
       Ok(output) => {
