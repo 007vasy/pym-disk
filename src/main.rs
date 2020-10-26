@@ -1,6 +1,7 @@
 use uuid::Uuid;
 use std::default::Default;
 use std::io::{stdin,stdout,Write};
+use std::{thread, time};
 use rusoto_core::{Region, HttpClient};
 use rusoto_ec2::{Ec2Client, Ec2, RunInstancesRequest, CreateVolumeRequest, AttachVolumeRequest};
 use rusoto_sts::StsClient;
@@ -132,7 +133,8 @@ pub fn spawn(worker_type: String) {
       volume_id: volume_id_holder,
       ..Default::default()
     };
-
+    let ten_sec = time::Duration::from_millis(10000);
+    thread::sleep(ten_sec);
     match rt.block_on(client.attach_volume(attach_volume_rqst)) {
       Ok(output) => {
         match output.volume_id {
