@@ -121,7 +121,7 @@ pub fn spawn(worker_type: String) {
         }
         }
         ),
-      ..Default::default() // add tag_specifications for easier clean up
+      ..Default::default() // TODO add delete on termination
     };
     match rt.block_on(client.create_volume(create_volume_rqst)) {
       Ok(output) => {
