@@ -109,11 +109,17 @@ fn make_volumes_available() {
 
 fn setup_mount_point(cli_args,_rt,cred_provider) {
     make_volumes_available()
+    // Create VG
+    // Add volumes
+    // Create LG with settings
+    // Mount LG
 }
 
 
 fn extend_mount_point() {
     make_volumes_available()
+    // Extend VG
+    // Extend LG: lvextend vg/stripe -l +100%FREE --resizefs
 }
 
 pub fn pym_disk_handler(cli_args: Cli) {
