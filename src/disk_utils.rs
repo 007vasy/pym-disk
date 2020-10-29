@@ -21,9 +21,20 @@ use crate::helpers::setup_aws_credentials::fetch_credentials;
 use crate::helpers::setup_cli::Cli;
 use crate::helpers::setup_tokio::create_runtime;
 
-fn calculate_next_disk_size() {}
+fn calculate_next_disk_size() {
+    // Strat double
+}
 
-fn generate_next_disk_name() {}
+fn generate_next_disk_name() {
+    static ASCII_LOWER: [char; 26] = [
+    'a', 'b', 'c', 'd', 'e', 
+    'f', 'g', 'h', 'i', 'j', 
+    'k', 'l', 'm', 'n', 'o',
+    'p', 'q', 'r', 's', 't', 
+    'u', 'v', 'w', 'x', 'y', 
+    'z',
+];
+}
 
 fn volume_availability_waiter() {}
 
@@ -48,6 +59,7 @@ fn get_used_mount_point_memory_percent() {
 }
 
 fn create_attach_and_init_volume() {
+    // TODO async
     let client = Ec2Client::new_with(
         HttpClient::new().unwrap(),
         cred_provider,

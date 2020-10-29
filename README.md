@@ -22,10 +22,11 @@ Rust based ebs volume autoscaling tool for AWS with striping
     * add contributions (fork + PR)
     * add fibonacci growing strat next to doubling
     * change every command line invocation to Rust code
+    * check pre-reqs
 
 # Steps to do striped autoscaling manually
 
-## Initialisation
+## Pre-reqs
 
 yum update -y
 yum install -y btrfs-progs xfsprogs e4fsprogs lvm2
