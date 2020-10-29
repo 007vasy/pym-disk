@@ -15,7 +15,13 @@ uuid = { version = "0.8", features = ["v4"] }
 tokio = { version = "0.2.22", features = ["full"] }    
 sysinfo = "0.15.3"
 
-[dev-dependencies.cargo-husky]
-version = "1"
-default-features = false # Disable features which are enabled by default
-features = ["precommit-hook", "run-cargo-test", "run-cargo-clippy", "run-cargo-check","run-cargo-fmt"]
+[dev-dependencies]
+rusty-hook = "^0.11.0"
+
+[hooks]
+pre-commit = ["cargo fmt -- --check", "cargo clippy -- -D warnings"]
+pre-push = ["cargo test", "cargo check"]
+post-commit = "echo yay"
+
+[logging]
+verbose = true
