@@ -1,13 +1,12 @@
 use rusoto_credential::{
-    AwsCredentials, ChainProvider, ProfileProvider,DefaultCredentialsProvider,ProvideAwsCredentials,
+    AwsCredentials, ChainProvider, DefaultCredentialsProvider, ProfileProvider,
+    ProvideAwsCredentials,
 };
 use std::time::Duration;
 
 pub async fn fetch_credentials() -> (AwsCredentials, String) {
-    
     //let profile_name = "pym-disk";
     //let profile_name = "default";
-
 
     //let mut pp = ProfileProvider::new().unwrap();
     //pp.set_profile(profile_name);
@@ -18,12 +17,9 @@ pub async fn fetch_credentials() -> (AwsCredentials, String) {
     cp.set_timeout(Duration::from_millis(500));
     //let creds = cp.credentials().await.unwrap();
     let creds = DefaultCredentialsProvider::new()
-            .unwrap()
-            .credentials()
-            .await
-            .unwrap();
-    (
-        creds.clone(),
-        format!("{:?}", creds)
-    )
+        .unwrap()
+        .credentials()
+        .await
+        .unwrap();
+    (creds.clone(), format!("{:?}", creds))
 }

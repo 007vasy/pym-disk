@@ -1,23 +1,26 @@
-use uuid::Uuid;
-use std::default::Default;
-use std::io::{stdin,stdout,Write};
-use std::{thread, time};
-use rusoto_core::{Region, HttpClient};
-use rusoto_ec2::{Ec2Client, Ec2, RunInstancesRequest, CreateVolumeRequest, AttachVolumeRequest, TagSpecification, Tag};
-use rusoto_sts::StsClient;
-use rusoto_sts::StsAssumeRoleSessionCredentialsProvider;
+use rusoto_core::{HttpClient, Region};
 use rusoto_credential::StaticProvider;
+use rusoto_ec2::{
+    AttachVolumeRequest, CreateVolumeRequest, Ec2, Ec2Client, RunInstancesRequest, Tag,
+    TagSpecification,
+};
+use rusoto_sts::StsAssumeRoleSessionCredentialsProvider;
+use rusoto_sts::StsClient;
+use std::default::Default;
+use std::io::{stdin, stdout, Write};
+use std::{thread, time};
+use uuid::Uuid;
 mod setup_tokio;
 use setup_tokio::create_runtime;
 
 mod setup_aws_credentials;
 use setup_aws_credentials::fetch_credentials;
 
-use sysinfo::{ProcessExt, SystemExt, System, DiskExt};
+use sysinfo::{DiskExt, ProcessExt, System, SystemExt};
 
 pub fn spawn(worker_type: String) {
     println!("worker type: {}", worker_type);
-  
+
     let client_token = format!("{}-{}", worker_type, Uuid::new_v4());
     println!("client token: {}", client_token);
 
@@ -34,10 +37,8 @@ pub fn spawn(worker_type: String) {
         None,
     );
 
-
-
     // let sts = StsClient::new_with(HttpClient::new().unwrap(),cred_provider,Region::ApSoutheast2);
-    
+
     // let mut provider = StsAssumeRoleSessionCredentialsProvider::new(
     //     sts,
     //     "arn:aws:iam::667213777749:role/OrganizationAccountAccessRole".to_owned(),
@@ -59,7 +60,11 @@ pub fn spawn(worker_type: String) {
     // provider.set_mfa_code(s);
 
     // let client = Ec2Client::new_with(HttpClient::new().unwrap(), provider, Region::ApSoutheast2);
-    let client = Ec2Client::new_with(HttpClient::new().unwrap(), cred_provider, Region::ApSoutheast2);
+    let client = Ec2Client::new_with(
+        HttpClient::new().unwrap(),
+        cred_provider,
+        Region::ApSoutheast2,
+    );
 
     // let run_instances_request: RunInstancesRequest = RunInstancesRequest {
     //   min_count: 1,
@@ -75,7 +80,6 @@ pub fn spawn(worker_type: String) {
     //   ..Default::default()
     // };
 
-    
     let mut system = sysinfo::System::new_all();
 
     // First we update all information of our system struct.
@@ -94,8 +98,8 @@ pub fn spawn(worker_type: String) {
     // And then all disks' information:
     for disk in system.get_disks() {
         println!("{:?}", disk);
-        println!("{}",disk.get_available_space());
-        println!("{}",disk.get_total_space());
+        println!("{}", disk.get_available_space());
+        println!("{}", disk.get_total_space());
     }
 
     // And finally the RAM and SWAP information:
@@ -106,67 +110,54 @@ pub fn spawn(worker_type: String) {
 
     let mut volume_id_holder = String::new();
     let create_volume_rqst = CreateVolumeRequest {
-      availability_zone: "ap-southeast-2b".to_string(), //Todo get it from config
-      size: Some(8), // increase with every new addition, Fibonacci?
-      volume_type: Some("gp2".to_string()), //Todo get it from config
-      tag_specifications: Some(vec!{
-        TagSpecification{
-          resource_type:Some("volume".to_string()),
-          tags:Some(vec!{
-            Tag{
-              key:Some("createdBy".to_string()),
-              value:Some("pym-disk".to_string())
-            }
-          })
-        }
-        }
-        ),
-      ..Default::default() // TODO add delete on termination
+        availability_zone: "ap-southeast-2b".to_string(), //Todo get it from config
+        size: Some(8), // increase with every new addition, Fibonacci?
+        volume_type: Some("gp2".to_string()), //Todo get it from config
+        tag_specifications: Some(vec![TagSpecification {
+            resource_type: Some("volume".to_string()),
+            tags: Some(vec![Tag {
+                key: Some("createdBy".to_string()),
+                value: Some("pym-disk".to_string()),
+            }]),
+        }]),
+        ..Default::default() // TODO add delete on termination
     };
     match rt.block_on(client.create_volume(create_volume_rqst)) {
-      Ok(output) => {
-        match output.volume_id {
-          Some(volume_id) => {
-
-              volume_id_holder = volume_id;
-
-          }
-          None => println!("no instances instantiated!"),
+        Ok(output) => match output.volume_id {
+            Some(volume_id) => {
+                volume_id_holder = volume_id;
+            }
+            None => println!("no instances instantiated!"),
+        },
+        Err(error) => {
+            println!("Error: {:?}", error);
         }
-      }
-      Err(error) => {
-        println!("Error: {:?}", error);
-      }
     }
 
     let attach_volume_rqst = AttachVolumeRequest {
-      device: "/dev/xvdf".to_string(),
-      instance_id: "i-0cb68a3d1a173fe0c".to_string(), // TODO get it from config
-      volume_id: volume_id_holder,
-      ..Default::default()
+        device: "/dev/xvdf".to_string(),
+        instance_id: "i-0cb68a3d1a173fe0c".to_string(), // TODO get it from config
+        volume_id: volume_id_holder,
+        ..Default::default()
     };
     let ten_sec = time::Duration::from_millis(10000);
     thread::sleep(ten_sec);
     match rt.block_on(client.attach_volume(attach_volume_rqst)) {
-      Ok(output) => {
-        match output.volume_id {
-          Some(volume_id) => {
-            println!("{}", volume_id);
-
-          }
-          None => println!("no instances instantiated!"),
+        Ok(output) => match output.volume_id {
+            Some(volume_id) => {
+                println!("{}", volume_id);
+            }
+            None => println!("no instances instantiated!"),
+        },
+        Err(error) => {
+            println!("Error: {:?}", error);
         }
-      }
-      Err(error) => {
-        println!("Error: {:?}", error);
-      }
     }
-      
 
     for disk in system.get_disks() {
-      println!("{:?}", disk);
-      println!("{}",disk.get_available_space());
-      println!("{}",disk.get_total_space());
+        println!("{:?}", disk);
+        println!("{}", disk.get_available_space());
+        println!("{}", disk.get_total_space());
     }
 
     // And finally the RAM and SWAP information:
@@ -174,26 +165,25 @@ pub fn spawn(worker_type: String) {
     println!("used memory : {} KB", system.get_used_memory());
     println!("total swap  : {} KB", system.get_total_swap());
     println!("used swap   : {} KB", system.get_used_swap());
-  
-  //   match rt.block_on(client.run_instances(run_instances_request)) {
-  //     Ok(output) => {
-  //       match output.instances {
-  //         Some(instances) => {
-  //           println!("instances instantiated:");
-  //           for instance in instances {
-  //             println!("{:?}", instance.instance_id);
-  //           }
-  //         }
-  //         None => println!("no instances instantiated!"),
-  //       }
-  //     }
-  //     Err(error) => {
-  //       println!("Error: {:?}", error);
-  //     }
-  //   }
-  }
 
+    //   match rt.block_on(client.run_instances(run_instances_request)) {
+    //     Ok(output) => {
+    //       match output.instances {
+    //         Some(instances) => {
+    //           println!("instances instantiated:");
+    //           for instance in instances {
+    //             println!("{:?}", instance.instance_id);
+    //           }
+    //         }
+    //         None => println!("no instances instantiated!"),
+    //       }
+    //     }
+    //     Err(error) => {
+    //       println!("Error: {:?}", error);
+    //     }
+    //   }
+}
 
 fn main() {
-  spawn("BenTest".to_string());
+    spawn("BenTest".to_string());
 }
