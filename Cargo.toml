@@ -24,4 +24,4 @@ pre-push = ["cargo test", "cargo check"]
 post-commit = "echo yay"
 
 [logging]
-verbose = true
+verbose = false
