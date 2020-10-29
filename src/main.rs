@@ -1,13 +1,18 @@
 use rusoto_core::{HttpClient, Region};
 use rusoto_credential::StaticProvider;
 use rusoto_ec2::{
-    AttachVolumeRequest, CreateVolumeRequest, Ec2, Ec2Client, RunInstancesRequest, Tag,
+    AttachVolumeRequest,
+    CreateVolumeRequest,
+    Ec2,
+    Ec2Client,
+    //RunInstancesRequest,
+    Tag,
     TagSpecification,
 };
-use rusoto_sts::StsAssumeRoleSessionCredentialsProvider;
-use rusoto_sts::StsClient;
+// use rusoto_sts::StsAssumeRoleSessionCredentialsProvider;
+// use rusoto_sts::StsClient;
 use std::default::Default;
-use std::io::{stdin, stdout, Write};
+// use std::io::{stdin, stdout, Write};
 use std::{thread, time};
 use uuid::Uuid;
 mod setup_tokio;
@@ -16,7 +21,9 @@ use setup_tokio::create_runtime;
 mod setup_aws_credentials;
 use setup_aws_credentials::fetch_credentials;
 
-use sysinfo::{DiskExt, ProcessExt, System, SystemExt};
+use sysinfo::{DiskExt, SystemExt};
+
+use structopt::StructOpt;
 
 pub fn spawn(worker_type: String) {
     println!("worker type: {}", worker_type);
@@ -25,10 +32,10 @@ pub fn spawn(worker_type: String) {
     println!("client token: {}", client_token);
 
     // we use tokio runtime for various async activity
-    let (mut rt, rt_msg) = create_runtime();
+    let (mut _rt, _rt_msg) = create_runtime();
 
     // a single set of credentials which we are assuming will last throughout the whole copy
-    let (creds, creds_msg) = rt.block_on(fetch_credentials());
+    let (creds, _creds_msg) = _rt.block_on(fetch_credentials());
 
     let cred_provider = StaticProvider::new(
         creds.aws_access_key_id().to_string(),
@@ -122,7 +129,7 @@ pub fn spawn(worker_type: String) {
         }]),
         ..Default::default() // TODO add delete on termination
     };
-    match rt.block_on(client.create_volume(create_volume_rqst)) {
+    match _rt.block_on(client.create_volume(create_volume_rqst)) {
         Ok(output) => match output.volume_id {
             Some(volume_id) => {
                 volume_id_holder = volume_id;
@@ -142,7 +149,7 @@ pub fn spawn(worker_type: String) {
     };
     let ten_sec = time::Duration::from_millis(10000);
     thread::sleep(ten_sec);
-    match rt.block_on(client.attach_volume(attach_volume_rqst)) {
+    match _rt.block_on(client.attach_volume(attach_volume_rqst)) {
         Ok(output) => match output.volume_id {
             Some(volume_id) => {
                 println!("{}", volume_id);
@@ -184,6 +191,50 @@ pub fn spawn(worker_type: String) {
     //   }
 }
 
+#[derive(StructOpt)]
+struct Cli {
+    // Mountpoint to attach the volumes
+    #[structopt(
+        short = "m",
+        long = "mount-point",
+        default_value = "/stratch",
+        parse(from_os_str)
+    )]
+    mount_point: std::path::PathBuf,
+    // Assumption: all size imput should come in GiB, abbreviation: low
+    #[structopt(short = "l", long = "min", default_value = "4")]
+    min: i64,
+    // Assumption: all size imput should come in GiB, abbreviation: high
+    #[structopt(short = "h", long = "max", default_value = "16")]
+    max: i64,
+    #[structopt(short = "s", long = "striping-level", default_value = "8")]
+    striping_level: i64,
+    // First device name to attach
+    #[structopt(
+        short = "f",
+        long = "first-device",
+        default_value = "/dev/sdb",
+        parse(from_os_str)
+    )]
+    first_device: std::path::PathBuf,
+    // Checking available disk space every <p> second
+    #[structopt(short = "p", long = "poll", default_value = "5")]
+    poll: i64,
+    // No polling, just runnig pym-disk once (useful for creating desired volume setup)
+    #[structopt(short, long)]
+    oneshot: bool,
+}
+
 fn main() {
+    let args = Cli::from_args();
+    println!("Mount point: {:?}", args.mount_point);
+    println!("Starting disk size: {:?}", args.min);
+    println!("Maximal overall available size: {:?}", args.max);
+    println!("Striping (Raid 0) level: {:?}", args.striping_level);
+    println!("First device: {:?}", args.first_device);
+    println!("Polling frequency: {:?}", args.poll);
+    println!("OneShotMode is {:?}", args.oneshot);
+    // TODO: input checking, higher than 0, min < max, stripe % 2 == 0, min * 2^x == max
+    // TODO: device naming conventions
     spawn("BenTest".to_string());
 }

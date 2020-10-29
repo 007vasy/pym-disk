@@ -1,5 +1,7 @@
 use rusoto_credential::{
-    AwsCredentials, ChainProvider, DefaultCredentialsProvider, ProfileProvider,
+    AwsCredentials,
+    ChainProvider,
+    DefaultCredentialsProvider, // ProfileProvider,
     ProvideAwsCredentials,
 };
 use std::time::Duration;
