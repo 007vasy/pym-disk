@@ -17,11 +17,3 @@ sysinfo = "0.15.3"
 
 [dev-dependencies]
 rusty-hook = "^0.11.0"
-
-[hooks]
-pre-commit = ["cargo fmt -- --check", "cargo clippy -- -D warnings"]
-pre-push = ["cargo test", "cargo check"]
-post-commit = "echo yay"
-
-[logging]
-verbose = false
