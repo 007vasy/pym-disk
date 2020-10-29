@@ -6,6 +6,7 @@ Rust based ebs volume autoscaling tool for AWS
 
 # TODOS
 
+    * speed test with s3bfg
     * input checking, everything is higher than 0, min < max, stripe % 2 == 0, min * 2^x == max? x>=1
     * device naming conventions
     * add volume types
@@ -19,3 +20,23 @@ Rust based ebs volume autoscaling tool for AWS
     * add deploy binary description
     * add contributions (fork + PR)
     * add fibonacci growing strat next to doubling
+
+# Steps to do striped autoscaling manually
+
+## Initialisation
+
+yum update -y
+yum install -y btrfs-progs xfsprogs e4fsprogs lvm2
+
+## Setup
+
+vgcreate vg /dev/sdb /dev/sdc
+lvcreate -n stripe -l +100%FREE -i 2 vg
+mkdir /stratch
+mkfs.ext4 /dev/vg/stripe
+mount /dev/vg/stripe /stratch
+
+## Extension
+
+vgextend vg /dev/sdd /dev/sde
+lvextend vg/stripe -l +100%FREE --resizefs
