@@ -2,7 +2,7 @@
 
 # pym-disk
 
-Rust based ebs volume autoscaling tool for AWS
+Rust based ebs volume autoscaling tool for AWS with striping
 
 # TODOS
 
@@ -20,6 +20,7 @@ Rust based ebs volume autoscaling tool for AWS
     * add deploy binary description
     * add contributions (fork + PR)
     * add fibonacci growing strat next to doubling
+    * change every command line invocation to Rust code
 
 # Steps to do striped autoscaling manually
 
