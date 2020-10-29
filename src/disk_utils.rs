@@ -21,83 +21,17 @@ use crate::helpers::setup_aws_credentials::fetch_credentials;
 use crate::helpers::setup_cli::Cli;
 use crate::helpers::setup_tokio::create_runtime;
 
+fn calculate_next_disk_size() {}
 
-fn setup_disk(worker_type: String) {
-    println!("worker type: {}", worker_type);
+fn generate_next_disk_name() {}
 
-    let client_token = format!("{}-{}", worker_type, Uuid::new_v4());
-    println!("client token: {}", client_token);
+fn volume_availability_waiter() {}
 
-    // we use tokio runtime for various async activity
-    let (mut _rt, _rt_msg) = create_runtime();
-
-    // a single set of credentials which we are assuming will last throughout the whole copy
-    let (creds, _creds_msg) = _rt.block_on(fetch_credentials());
-
-    let cred_provider = StaticProvider::new(
-        creds.aws_access_key_id().to_string(),
-        creds.aws_secret_access_key().to_string(),
-        creds.token().clone(),
-        None,
-    );
-
-    // let sts = StsClient::new_with(HttpClient::new().unwrap(),cred_provider,Region::ApSoutheast2);
-
-    // let mut provider = StsAssumeRoleSessionCredentialsProvider::new(
-    //     sts,
-    //     "arn:aws:iam::667213777749:role/OrganizationAccountAccessRole".to_owned(),
-    //     "default".to_owned(),
-    //     None, None, None,
-    //     Some("arn:aws:iam::355186423092:mfa/bence.vass".to_owned()),
-    // );
-    // let mut s=String::new();
-    // print!("Please enter the MFA code: ");
-    // let _=stdout().flush();
-    // stdin().read_line(&mut s).expect("Did not enter a correct string");
-    // if let Some('\n')=s.chars().next_back() {
-    //     s.pop();
-    // }
-    // if let Some('\r')=s.chars().next_back() {
-    //     s.pop();
-    // }
-    // println!("You typed: {}",s);
-    // provider.set_mfa_code(s);
-
-    // let client = Ec2Client::new_with(HttpClient::new().unwrap(), provider, Region::ApSoutheast2);
-    let client = Ec2Client::new_with(
-        HttpClient::new().unwrap(),
-        cred_provider,
-        Region::ApSoutheast2,
-    );
-
-    // let run_instances_request: RunInstancesRequest = RunInstancesRequest {
-    //   min_count: 1,
-    //   max_count: 1,
-    //   key_name: Some("pym-disk-temp-key".to_string()),
-    //   client_token: Some(client_token),
-    //   image_id: Some("ami-0f96495a064477ffb".to_string()),
-    //   instance_type: Some("t2.micro".to_string()),
-    //   //security_groups: Some(vec!["rdp-only".to_string(), "ssh-only".to_string()]),
-    //   //security_group_ids: Some(vec!["sg-3bd7bf41".to_string(), "sg-s5bd6be21".to_string()]),
-    //   subnet_id: Some("subnet-03e605e7cac782459".to_string()),
-    //   instance_initiated_shutdown_behavior: Some("stop".to_string()),
-    //   ..Default::default()
-    // };
-
+fn get_used_mount_point_memory_percent() {
     let mut system = sysinfo::System::new_all();
 
     // First we update all information of our system struct.
     system.refresh_all();
-
-    // Now let's print every process' id and name:
-    // for (pid, proc_) in system.get_processes() {
-    //     println!("{}:{} => status: {:?}", pid, proc_.name(), proc_.status());
-    // }
-
-    // Then let's print the temperature of the different components:
-    // for component in system.get_components() {
-    //     println!("{:?}", component);
-    // }
 
     // And then all disks' information:
     for disk in system.get_disks() {
@@ -111,12 +45,20 @@ fn setup_disk(worker_type: String) {
     println!("used memory : {} KB", system.get_used_memory());
     println!("total swap  : {} KB", system.get_total_swap());
     println!("used swap   : {} KB", system.get_used_swap());
+}
+
+fn create_attach_and_init_volume() {
+    let client = Ec2Client::new_with(
+        HttpClient::new().unwrap(),
+        cred_provider,
+        Region::ApSoutheast2, //TODO get it from underlying EC2
+    );
 
     let mut volume_id_holder = String::new();
     let create_volume_rqst = CreateVolumeRequest {
-        availability_zone: "ap-southeast-2b".to_string(), //Todo get it from config
+        availability_zone: "ap-southeast-2b".to_string(), //TODO get it from underlying EC2
         size: Some(8), // increase with every new addition, Fibonacci?
-        volume_type: Some("gp2".to_string()), //Todo get it from config
+        volume_type: Some("gp2".to_string()), //Todo get it from cli parameters
         tag_specifications: Some(vec![TagSpecification {
             resource_type: Some("volume".to_string()),
             tags: Some(vec![Tag {
@@ -124,7 +66,7 @@ fn setup_disk(worker_type: String) {
                 value: Some("pym-disk".to_string()),
             }]),
         }]),
-        ..Default::default() // TODO add delete on termination
+        ..Default::default() // TODO add delete on termination setting
     };
     match _rt.block_on(client.create_volume(create_volume_rqst)) {
         Ok(output) => match output.volume_id {
@@ -140,7 +82,7 @@ fn setup_disk(worker_type: String) {
 
     let attach_volume_rqst = AttachVolumeRequest {
         device: "/dev/xvdf".to_string(),
-        instance_id: "i-0cb68a3d1a173fe0c".to_string(), // TODO get it from config
+        instance_id: "i-0cb68a3d1a173fe0c".to_string(), //TODO get it from underlying EC2
         volume_id: volume_id_holder,
         ..Default::default()
     };
@@ -158,48 +100,42 @@ fn setup_disk(worker_type: String) {
         }
     }
 
-    for disk in system.get_disks() {
-        println!("{:?}", disk);
-        println!("{}", disk.get_available_space());
-        println!("{}", disk.get_total_space());
-    }
+    // TODO volume init (formatting)
+}
 
-    // And finally the RAM and SWAP information:
-    println!("total memory: {} KB", system.get_total_memory());
-    println!("used memory : {} KB", system.get_used_memory());
-    println!("total swap  : {} KB", system.get_total_swap());
-    println!("used swap   : {} KB", system.get_used_swap());
+fn make_volumes_available() {
+    create_attach_and_init_volume()
+}
 
-    //   match rt.block_on(client.run_instances(run_instances_request)) {
-    //     Ok(output) => {
-    //       match output.instances {
-    //         Some(instances) => {
-    //           println!("instances instantiated:");
-    //           for instance in instances {
-    //             println!("{:?}", instance.instance_id);
-    //           }
-    //         }
-    //         None => println!("no instances instantiated!"),
-    //       }
-    //     }
-    //     Err(error) => {
-    //       println!("Error: {:?}", error);
-    //     }
-    //   }
+fn setup_mount_point(cli_args,_rt,cred_provider) {
+    make_volumes_available()
 }
 
 
-fn extend_disk() {}
-
-fn calculate_next_disk_size() {}
-
-fn calculate_next_disk_name() {}
+fn extend_mount_point() {
+    make_volumes_available()
+}
 
 pub fn pym_disk_handler(cli_args: Cli) {
+    // we use tokio runtime for various async activity
+    let (mut _rt, _rt_msg) = create_runtime();
+
+    // a single set of credentials which we are assuming will last throughout the whole operation
+    let (creds, _creds_msg) = _rt.block_on(fetch_credentials());
+
+    let cred_provider = StaticProvider::new(
+        creds.aws_access_key_id().to_string(),
+        creds.aws_secret_access_key().to_string(),
+        creds.token().clone(),
+        None,
+    );
+
+    setup_mount_point(cli_args,_rt,cred_provider);
     if cli_args.oneshot {
         // TODO: Coloring, loading, other fancy stuff
         println!(">>> Pym Disk is in One Shot Mode! <<<");
     } else {
         println!(">>> Pym Disk is in Watch Dog Mode! <<<");
+
     };
 }

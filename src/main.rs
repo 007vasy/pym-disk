@@ -19,8 +19,6 @@ fn main() {
     println!("First device: {:?}", args.first_device);
     println!("Polling frequency: {:?}", args.poll);
     println!("OneShotMode is {:?}", args.oneshot);
-    // TODO: input checking, everything is higher than 0, min < max, stripe % 2 == 0, min * 2^x == max? x>=1
-    // TODO: device naming conventions
 
     pym_disk_handler(args);
 }
