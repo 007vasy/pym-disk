@@ -36,7 +36,9 @@ fn generate_next_disk_name() {
 ];
 }
 
-fn volume_availability_waiter() {}
+fn volume_availability_waiter() {
+    // describe volume? creation and attachment or just at creation?
+}
 
 fn get_used_mount_point_memory_percent() {
     let mut system = sysinfo::System::new_all();
