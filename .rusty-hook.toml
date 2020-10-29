@@ -3,4 +3,4 @@ pre-commit = "cargo fmt -- --check && cargo clippy -- -D warnings"
 pre-push = "cargo test && cargo check"
 
 [logging]
-verbose = false
+verbose = true
