@@ -23,8 +23,9 @@ use crate::helpers::setup_aws_credentials::fetch_credentials;
 use crate::helpers::setup_cli::Cli;
 use crate::helpers::setup_tokio::create_runtime;
 
-fn calculate_next_disk_size() {
-    // Strat double
+fn calculate_next_disk_size(last_size:int64) -> int64 {
+    // Strat 10x
+    last_size * 10
 }
 
 fn generate_next_device_name(current_device_name: String) -> Result<String, String> {
@@ -71,23 +72,21 @@ mod tests {
 }
 
 fn get_used_mount_point_memory_percent() {
-    let mut system = sysinfo::System::new_all();
+    let sys = System::new();
 
-    // First we update all information of our system struct.
-    system.refresh_all();
-
-    // And then all disks' information:
-    for disk in system.get_disks() {
-        println!("{:?}", disk);
-        println!("{}", disk.get_available_space());
-        println!("{}", disk.get_total_space());
+    match sys.mounts() {
+        Ok(mounts) => {
+            println!("\nMounts:");
+            for mount in mounts.iter() {
+                if mount.fs_mounted_on == "/" {
+                    println!("mount point: > {} < (available {} of {}) Extra space needed: {}", 
+                        mount.fs_mounted_on, mount.avail, mount.total, saturating_sub_bytes(mount.total, mount.avail) < mount.avail);
+                }
+            }
+        }
+        Err(x) => println!("\nMounts: error: {}", x)
     }
 
-    // And finally the RAM and SWAP information:
-    println!("total memory: {} KB", system.get_total_memory());
-    println!("used memory : {} KB", system.get_used_memory());
-    println!("total swap  : {} KB", system.get_total_swap());
-    println!("used swap   : {} KB", system.get_used_swap());
 }
 
 fn extract_volume_state_info(volumes:Vec<Volume>,desired_state:String) -> bool {

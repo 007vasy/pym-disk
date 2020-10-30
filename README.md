@@ -20,7 +20,7 @@ Rust based ebs volume autoscaling tool for AWS with striping
 - tests, long due
 - add deploy binary description
 - add contributions (fork + PR)
-- add fibonacci growing strat next to doubling
+- add fibonacci and doubling to the 10x strat (because limited device names and striping)
 - change every command line invocation to Rust code
 - check pre-reqs
 - more status messages
