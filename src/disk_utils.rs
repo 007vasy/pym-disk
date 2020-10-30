@@ -27,15 +27,47 @@ fn calculate_next_disk_size() {
     // Strat double
 }
 
-fn generate_next_disk_name() {
+fn generate_next_device_name(current_device_name: String) -> Result<String, String> {
     static ASCII_LOWER: [char; 26] = [
-    'a', 'b', 'c', 'd', 'e', 
-    'f', 'g', 'h', 'i', 'j', 
-    'k', 'l', 'm', 'n', 'o',
-    'p', 'q', 'r', 's', 't', 
-    'u', 'v', 'w', 'x', 'y', 
-    'z',
-];
+        'a', 'b', 'c', 'd', 'e', 
+        'f', 'g', 'h', 'i', 'j', 
+        'k', 'l', 'm', 'n', 'o',
+        'p', 'q', 'r', 's', 't', 
+        'u', 'v', 'w', 'x', 'y', 
+        'z',
+    ];
+    
+    let lookup_char = current_device_name.chars().last().unwrap();
+    
+    if lookup_char == 'z'{
+        return Err("No device names left".to_string())
+    }
+    
+    let mut new_device_name = current_device_name.clone();
+    new_device_name.truncate(current_device_name.len()-1);// + new_char;
+    new_device_name = new_device_name + &ASCII_LOWER[ASCII_LOWER.iter().position(|&r| r == lookup_char).unwrap() + 1].to_string();
+
+    Ok(new_device_name)
+}
+
+
+#[cfg(test)]
+mod tests {
+    // Note this useful idiom: importing names from outer (for mod tests) scope.
+    use super::*;
+  
+
+    #[test]
+    fn test_nice() {
+        assert_eq!(Ok("/dev/sdc".to_string()),generate_next_device_name("/dev/sdb".to_string()));
+    }
+
+    #[test]
+    fn test_error() {
+        assert_eq!(Err("No device names left".to_string()),generate_next_device_name("/dev/sdz".to_string()));
+
+    }
+
 }
 
 fn get_used_mount_point_memory_percent() {
