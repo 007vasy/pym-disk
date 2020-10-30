@@ -184,7 +184,7 @@ async fn create_and_attach_volume() -> String {
             [InstanceBlockDeviceMappingSpecification{
                 device_name: Some(device_name.to_string()),
                 ebs: Some(EbsInstanceBlockDeviceSpecification{
-                    delete_on_termination: Some(false), // TODO this currently set the delete on termination flag to true
+                    delete_on_termination: Some(true), // TODO this currently set the delete on termination flag to true
                     ..Default::default()
                 }),
                 ..Default::default()
