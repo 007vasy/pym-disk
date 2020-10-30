@@ -13,8 +13,7 @@ rusoto_credential = { version = "0.45.0", default_features = false }
 rusoto_sts = { version = "0.45.0", default_features = false, features=["rustls"] }
 uuid = { version = "0.8", features = ["v4"] }
 tokio = { version = "0.2.22", features = ["full"] }    
-sysinfo = "0.15.3"
 structopt = "0.3.13"
-
+systemstat = "0.1.5"
 [dev-dependencies]
 rusty-hook = "^0.11.0"
