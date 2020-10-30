@@ -1,21 +1,23 @@
 use rusoto_core::{HttpClient, Region};
-use rusoto_credential::StaticProvider;
+use rusoto_credential::{StaticProvider,ProvideAwsCredentials};
 use rusoto_ec2::{
     AttachVolumeRequest,
     CreateVolumeRequest,
     Ec2,
     Ec2Client,
-    //RunInstancesRequest,
+    DescribeVolumesRequest,
+    ModifyInstanceAttributeRequest,
     Tag,
     TagSpecification,
+    InstanceBlockDeviceMappingSpecification,
+    EbsInstanceBlockDeviceSpecification,
+    Volume
 };
-// use rusoto_sts::StsAssumeRoleSessionCredentialsProvider;
-// use rusoto_sts::StsClient;
+
 use std::default::Default;
-// use std::io::{stdin, stdout, Write};
 use std::{thread, time};
 use sysinfo::{DiskExt, SystemExt};
-use uuid::Uuid;
+use std::future::Future;
 
 use crate::helpers::setup_aws_credentials::fetch_credentials;
 use crate::helpers::setup_cli::Cli;
@@ -60,8 +62,74 @@ fn get_used_mount_point_memory_percent() {
     println!("used swap   : {} KB", system.get_used_swap());
 }
 
-fn create_attach_and_init_volume() {
-    // TODO async
+fn extract_volume_state_info(volumes:Vec<Volume>,desired_state:String) -> bool {
+    desired_state == match desired_state.as_ref() {
+        "available" => volumes[0].state.as_ref().unwrap().to_string(),
+        "attached" => volumes[0].attachments.as_ref().unwrap()[0].state.as_ref().unwrap().to_string(),
+        _ => unimplemented!(),
+    }
+}
+
+pub async fn volume_state_waiter(client:&Ec2Client, volume_id:String, desired_state:String) -> Result<String, String>{
+
+    let small_sleep = time::Duration::from_millis(200);
+
+    
+    let describe_volume_request = DescribeVolumesRequest {
+        volume_ids: Some([volume_id.to_string()].to_vec()),
+        ..Default::default()
+    };
+
+    let mut count = 0u32;
+
+    println!("Wait until volume: >{}< is in state: >{}<", volume_id, desired_state);
+
+    // Infinite loop
+    loop {
+        count += 1;
+        let mut _describe_volume_request = describe_volume_request.clone();
+        match client.describe_volumes(_describe_volume_request).await {
+            Ok(ref output) => match &output.volumes {
+                Some(volumes) => {
+                    if extract_volume_state_info(volumes.to_vec(), desired_state.to_string()){
+                        return Ok(format!("Desired state {} Polled", desired_state))
+                    }
+                }
+                None => println!("no volumes to describe"),
+            },
+            Err(error) => {
+                println!("Error: {:?}", error);
+            }
+    
+        }
+
+
+        if count == 600 { // Timeout after 600 * 200ms = 2 mins
+            println!("OK, that's enough");
+
+            // Exit this loop
+            return Err("Timeout".to_string())
+        }
+        thread::sleep(small_sleep);
+    }
+
+    
+    
+}
+
+pub async fn create_and_attach_volume() -> String {
+    let device_name = "/dev/sdh"; //Todo get it from cli parameters
+    let instance_id = "i-0cb68a3d1a173fe0c"; //TODO get it from underlying EC2
+    let availability_zone = "ap-southeast-2b"; //TODO get it from underlying EC2
+    let volume_type = "gp2"; //Todo get it from cli parameters
+    let size = 8; //Todo get it from cli + algs
+    let (creds, creds_msg) = fetch_credentials().await;
+    let cred_provider = StaticProvider::new(
+        creds.aws_access_key_id().to_string(),
+        creds.aws_secret_access_key().to_string(),
+        creds.token().clone(),
+        None,
+    );
     let client = Ec2Client::new_with(
         HttpClient::new().unwrap(),
         cred_provider,
@@ -69,10 +137,10 @@ fn create_attach_and_init_volume() {
     );
 
     let mut volume_id_holder = String::new();
-    let create_volume_rqst = CreateVolumeRequest {
-        availability_zone: "ap-southeast-2b".to_string(), //TODO get it from underlying EC2
-        size: Some(8), // increase with every new addition, Fibonacci?
-        volume_type: Some("gp2".to_string()), //Todo get it from cli parameters
+    let create_volume_request = CreateVolumeRequest {
+        availability_zone: availability_zone.to_string(),
+        size: Some(size),
+        volume_type: Some(volume_type.to_string()), 
         tag_specifications: Some(vec![TagSpecification {
             resource_type: Some("volume".to_string()),
             tags: Some(vec![Tag {
@@ -80,45 +148,72 @@ fn create_attach_and_init_volume() {
                 value: Some("pym-disk".to_string()),
             }]),
         }]),
-        ..Default::default() // TODO add delete on termination setting
+        ..Default::default() 
     };
-    match _rt.block_on(client.create_volume(create_volume_rqst)) {
-        Ok(output) => match output.volume_id {
+    match client.create_volume(create_volume_request).await {
+        Ok(ref output) => match &output.volume_id {
             Some(volume_id) => {
-                volume_id_holder = volume_id;
+                volume_id_holder = volume_id.to_string();
             }
-            None => println!("no instances instantiated!"),
+            None => println!("no volumes created"),
         },
         Err(error) => {
             println!("Error: {:?}", error);
         }
+
     }
 
-    let attach_volume_rqst = AttachVolumeRequest {
-        device: "/dev/xvdf".to_string(),
-        instance_id: "i-0cb68a3d1a173fe0c".to_string(), //TODO get it from underlying EC2
-        volume_id: volume_id_holder,
+    let attach_volume_request = AttachVolumeRequest {
+        device: device_name.to_string(),
+        instance_id: instance_id.to_string(), 
+        volume_id: volume_id_holder.to_string(),
         ..Default::default()
     };
-    let ten_sec = time::Duration::from_millis(10000);
-    thread::sleep(ten_sec);
-    match _rt.block_on(client.attach_volume(attach_volume_rqst)) {
-        Ok(output) => match output.volume_id {
+    volume_state_waiter(&client, volume_id_holder.to_string(), "available".to_string()).await;
+    match client.attach_volume(attach_volume_request).await {
+        Ok(ref output) => match &output.volume_id {
             Some(volume_id) => {
                 println!("{}", volume_id);
+                //println!("{:?}", output);
             }
-            None => println!("no instances instantiated!"),
+            None => println!("no volumes attached"),
         },
         Err(error) => {
             println!("Error: {:?}", error);
         }
     }
+    volume_state_waiter(&client, volume_id_holder.to_string(), "attached".to_string()).await;
+    let modify_instance_attribute_request = ModifyInstanceAttributeRequest {
+        block_device_mappings: Some(
+            [InstanceBlockDeviceMappingSpecification{
+                device_name: Some(device_name.to_string()),
+                ebs: Some(EbsInstanceBlockDeviceSpecification{
+                    delete_on_termination: Some(false), // TODO this currently set the delete on termination flag to true
+                    ..Default::default()
+                }),
+                ..Default::default()
+            }].to_vec()
+        ),
+        instance_id: instance_id.to_string(), 
+        ..Default::default()
+    };
 
-    // TODO volume init (formatting)
+    match client.modify_instance_attribute(modify_instance_attribute_request).await{
+        Ok(_) =>{
+            println!("Ok")
+        }
+        Err(error) => {
+            println!("Error: {:?}", error);
+        }
+    };
+
+    volume_id_holder
+
+
 }
 
 fn make_volumes_available() {
-    create_attach_and_init_volume()
+    create_and_attach_volume()
 }
 
 fn setup_mount_point(cli_args,_rt,cred_provider) {
