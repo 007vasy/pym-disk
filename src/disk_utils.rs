@@ -38,10 +38,6 @@ fn generate_next_disk_name() {
 ];
 }
 
-fn volume_availability_waiter() {
-    // describe volume? creation and attachment or just at creation?
-}
-
 fn get_used_mount_point_memory_percent() {
     let mut system = sysinfo::System::new_all();
 
@@ -70,7 +66,7 @@ fn extract_volume_state_info(volumes:Vec<Volume>,desired_state:String) -> bool {
     }
 }
 
-pub async fn volume_state_waiter(client:&Ec2Client, volume_id:String, desired_state:String) -> Result<String, String>{
+async fn volume_state_waiter(client:&Ec2Client, volume_id:String, desired_state:String) -> Result<String, String>{
 
     let small_sleep = time::Duration::from_millis(200);
 
@@ -117,7 +113,7 @@ pub async fn volume_state_waiter(client:&Ec2Client, volume_id:String, desired_st
     
 }
 
-pub async fn create_and_attach_volume() -> String {
+async fn create_and_attach_volume() -> String {
     let device_name = "/dev/sdh"; //Todo get it from cli parameters
     let instance_id = "i-0cb68a3d1a173fe0c"; //TODO get it from underlying EC2
     let availability_zone = "ap-southeast-2b"; //TODO get it from underlying EC2
@@ -218,17 +214,18 @@ fn make_volumes_available() {
 
 fn setup_mount_point(cli_args,_rt,cred_provider) {
     make_volumes_available()
-    // Create VG
-    // Add volumes
-    // Create LG with settings
-    // Mount LG
+    // vgcreate vg /dev/sdb /dev/sdc
+    // lvcreate -n stripe -l +100%FREE -i 2 vg
+    // mkdir /stratch
+    // mkfs.ext4 /dev/vg/stripe
+    // mount /dev/vg/stripe /stratch
 }
 
 
 fn extend_mount_point() {
     make_volumes_available()
-    // Extend VG
-    // Extend LG: lvextend vg/stripe -l +100%FREE --resizefs
+    // vgextend vg /dev/sdd /dev/sde
+    // lvextend vg/stripe -l +100%FREE --resizefs
 }
 
 pub fn pym_disk_handler(cli_args: Cli) {
