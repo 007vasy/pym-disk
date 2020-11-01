@@ -47,12 +47,12 @@ pub struct CliOptions {
     )]
     pub first_device: std::path::PathBuf,
     // Checking available disk space every <p> second
-    #[structopt(short = "p", long = "poll", default_value = "5")]
+    #[structopt(short = "p", long = "poll", default_value = "10")]
     pub poll: i64,
     // No polling, just runnig pym-disk once (useful for creating desired volume setup)
     #[structopt(short, long)]
     pub oneshot: bool,
-
+    
     #[structopt(short = "t", long = "volume_type", default_value = "gp2")]
     pub volume_type: VolumeType,
 

@@ -1,5 +1,5 @@
 use rusoto_core::{HttpClient, Region};
-use rusoto_credential::{StaticProvider,ProvideAwsCredentials};
+
 use rusoto_ec2::{
     AttachVolumeRequest,
     CreateVolumeRequest,
@@ -140,8 +140,6 @@ async fn volume_state_waiter(client:&Ec2Client, volume_id:String, desired_state:
         }
         thread::sleep(small_sleep);
     }
-
-    
     
 }
 
@@ -151,13 +149,7 @@ async fn create_and_attach_volume() -> String {
     let availability_zone = "ap-southeast-2b"; //TODO get it from underlying EC2
     let volume_type = "gp2"; //Todo get it from cli parameters
     let size = 8; //Todo get it from cli + algs
-    let (creds, creds_msg) = fetch_credentials().await;
-    let cred_provider = StaticProvider::new(
-        creds.aws_access_key_id().to_string(),
-        creds.aws_secret_access_key().to_string(),
-        creds.token().clone(),
-        None,
-    );
+    let cred_provider = fetch_credentials().await;
     let client = Ec2Client::new_with(
         HttpClient::new().unwrap(),
         cred_provider,
@@ -239,6 +231,8 @@ async fn create_and_attach_volume() -> String {
 
 }
 
+async
+
 fn make_volumes_available() {
     //check size
     create_and_attach_volume()
@@ -264,23 +258,18 @@ fn extend_mount_point() {
 pub fn pym_disk_handler(cli_args: CliOptions) {
     // we use tokio runtime for various async activity
     let (mut _rt, _rt_msg) = create_runtime();
+    
+    _rt.block_on(setup_mount_point(cli_args);
 
-    // a single set of credentials which we are assuming will last throughout the whole operation
-    let (creds, _creds_msg) = _rt.block_on(fetch_credentials());
-
-    let cred_provider = StaticProvider::new(
-        creds.aws_access_key_id().to_string(),
-        creds.aws_secret_access_key().to_string(),
-        creds.token().clone(),
-        None,
-    );
-
-    setup_mount_point(cli_args,_rt,cred_provider);
     if cli_args.oneshot {
         // TODO: Coloring, loading, other fancy stuff
         println!(">>> Pym Disk is in One Shot Mode! <<<");
     } else {
         println!(">>> Pym Disk is in Watch Dog Mode! <<<");
-
+        let watchdog_rest = time::Duration::from_seconds(cli.poll);
+        loop {
+            _rt.block_on(extend_mount_point(cli_args);
+            thread::sleep(watchdog_rest);
+        }
     };
 }
