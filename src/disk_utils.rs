@@ -19,7 +19,7 @@ use std::{thread, time};
 use sysinfo::{DiskExt, SystemExt};
 use std::future::Future;
 
-use crate::helpers::setup_aws_credentials::fetch_credentials;
+use crate::helpers::setup_aws_credentials::{fetch_credentials,EC2Metadata};
 use crate::helpers::setup_cli::CliOptions;
 use crate::helpers::setup_tokio::create_runtime;
 
@@ -72,7 +72,7 @@ mod tests {
 
 }
 
-fn get_used_mount_point_memory_percent() {
+fn extension_is_needed() -> bool {
     let sys = System::new();
 
     match sys.mounts() {
@@ -82,6 +82,7 @@ fn get_used_mount_point_memory_percent() {
                 if mount.fs_mounted_on == "/" {
                     println!("mount point: > {} < (available {} of {}) Extra space needed: {}", 
                         mount.fs_mounted_on, mount.avail, mount.total, saturating_sub_bytes(mount.total, mount.avail) < mount.avail);
+                    return saturating_sub_bytes(mount.total, mount.avail) < mount.avail
                 }
             }
         }
@@ -143,10 +144,10 @@ async fn volume_state_waiter(client:&Ec2Client, volume_id:String, desired_state:
     
 }
 
-async fn create_and_attach_volume() -> String {
-    let device_name = "/dev/sdh"; //Todo get it from cli parameters
+async fn create_and_attach_volume(cli_options:CliOptions) -> String {
     let instance_id = "i-0cb68a3d1a173fe0c"; //TODO get it from underlying EC2
     let availability_zone = "ap-southeast-2b"; //TODO get it from underlying EC2
+    let device_name = "/dev/sdh"; //Todo get it from cli parameters
     let volume_type = "gp2"; //Todo get it from cli parameters
     let size = 8; //Todo get it from cli + algs
     let cred_provider = fetch_credentials().await;
@@ -231,16 +232,16 @@ async fn create_and_attach_volume() -> String {
 
 }
 
-async
-
-fn make_volumes_available() {
+fn make_volumes_available(cli_options: CliOptions) {
     //check size
-    create_and_attach_volume()
+    create_and_attach_volume(cli_options);
     //calculate next size
 }
 
-fn setup_mount_point(cli_args,_rt,cred_provider) {
-    make_volumes_available()
+fn setup(cli_options: CliOptions) {
+    get_instance_metadata()
+    // add instance metadata to CliOptions
+    make_volumes_available(cli_options);
     // vgcreate vg /dev/sdb /dev/sdc
     // lvcreate -n stripe -l +100%FREE -i 2 vg
     // mkdir /stratch
@@ -249,26 +250,28 @@ fn setup_mount_point(cli_args,_rt,cred_provider) {
 }
 
 
-fn extend_mount_point() {
-    make_volumes_available()
+fn extend_mount_point(cli_options: CliOptions) {
+    make_volumes_available(cli_options)
     // vgextend vg /dev/sdd /dev/sde
     // lvextend vg/stripe -l +100%FREE --resizefs
 }
 
-pub fn pym_disk_handler(cli_args: CliOptions) {
+pub fn pym_disk_handler(cli_options: CliOptions) {
     // we use tokio runtime for various async activity
     let (mut _rt, _rt_msg) = create_runtime();
-    
-    _rt.block_on(setup_mount_point(cli_args);
 
-    if cli_args.oneshot {
+    _rt.block_on(setup(cli_args);
+
+    if cli_options.oneshot {
         // TODO: Coloring, loading, other fancy stuff
         println!(">>> Pym Disk is in One Shot Mode! <<<");
     } else {
         println!(">>> Pym Disk is in Watch Dog Mode! <<<");
         let watchdog_rest = time::Duration::from_seconds(cli.poll);
         loop {
-            _rt.block_on(extend_mount_point(cli_args);
+            if extension_is_needed() {
+                _rt.block_on(extend_mount_point(cli_options);
+            }
             thread::sleep(watchdog_rest);
         }
     };

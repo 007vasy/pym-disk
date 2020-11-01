@@ -30,6 +30,7 @@ Rust based ebs volume autoscaling tool for AWS with striping
 - iops check?
 - refactor creds provider to be more resilient
 - error handling?
+- region and availability zones enums
 
 # Steps to do striped autoscaling manually
 

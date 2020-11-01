@@ -17,6 +17,7 @@ structopt = "0.3.13"
 systemstat = "0.1.5"
 enum_derive = "0.1.7"
 custom_derive = "0.1.7"
+curl = "0.4.34"
 
 [dev-dependencies]
 rusty-hook = "^0.11.0"
