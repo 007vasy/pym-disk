@@ -27,6 +27,9 @@ Rust based ebs volume autoscaling tool for AWS with striping
 - add IO speed as a parameter
 - test delete on termination to make sure
 - regex mount point and device name
+- iops check?
+- refactor creds provider to be more resilient
+- error handling?
 
 # Steps to do striped autoscaling manually
 

@@ -20,11 +20,12 @@ use sysinfo::{DiskExt, SystemExt};
 use std::future::Future;
 
 use crate::helpers::setup_aws_credentials::fetch_credentials;
-use crate::helpers::setup_cli::Cli;
+use crate::helpers::setup_cli::CliOptions;
 use crate::helpers::setup_tokio::create_runtime;
 
-fn calculate_next_disk_size(last_size:int64) -> int64 {
-    // Strat 10x
+
+fn calculate_next_wolume_size(last_size:int64) -> int64 {
+    // Strat 10x because of the limited amount of EBS volumes could be attached
     last_size * 10
 }
 
@@ -236,11 +237,12 @@ async fn create_and_attach_volume() -> String {
 
     volume_id_holder
 
-
 }
 
 fn make_volumes_available() {
+    //check size
     create_and_attach_volume()
+    //calculate next size
 }
 
 fn setup_mount_point(cli_args,_rt,cred_provider) {
@@ -259,7 +261,7 @@ fn extend_mount_point() {
     // lvextend vg/stripe -l +100%FREE --resizefs
 }
 
-pub fn pym_disk_handler(cli_args: Cli) {
+pub fn pym_disk_handler(cli_args: CliOptions) {
     // we use tokio runtime for various async activity
     let (mut _rt, _rt_msg) = create_runtime();
 
