@@ -14,10 +14,7 @@ struct EC2Metadata {
     region: String,
 }
 
-// export AWS_AZ=$(curl -s  http://169.254.169.254/latest/meta-data/placement/availability-zone/)
-// export AWS_REGION=$(echo ${AWS_AZ} | sed -e 's/[a-z]$//')
-// export INSTANCE_ID=$(curl -s  http://169.254.169.254/latest/meta-data/instance-id)
-
+use std::io::Read;
 use std::time::Duration;
 
 async fn fetch_credentials() -> ProvideAwsCredentials{
@@ -46,32 +43,33 @@ async fn fetch_credentials() -> ProvideAwsCredentials{
     cred_provider.clone()
 }
 
-fn get_instance_metadata() -> EC2Metadata {
-    let mut get_az = Easy::new();
-    let mut get_i_id = Easy::new();
-    let ec2_metadata: EC2Metadata;
 
-    let AZ_URL = "http://169.254.169.254/latest/meta-data/placement/availability-zone/"
-    let INSTANCE_ID_URL = " http://169.254.169.254/latest/meta-data/instance-id"
+async fn curl_url(url: &str) -> Result<String,reqwest::Error> {
+    let resp = reqwest::get(url)
+        .await?
+        .text()
+        .await?;
+    Ok(resp)
+}
 
-    get_i_id.url(INSTANCE_ID_URL).unwrap();
-    get_i_id.write_function(|data| {
-        Ok(data)
-    }).unwrap();
-    
-    get_az.url(AZ_URL).unwrap();
-    get_az.write_function(|data| {
-        Ok(data)
-    }).unwrap();
+pub struct EC2Metadata {
+    instance_id: String,
+    availability_zone: String,
+    region: String,
+}
 
-    let instance_id:String = get_i_id.perform.unwrap();
-    let availability_zone:String = get_az.perform().unwrap();
-    let region:String = availability_zone.clone().truncate(availability_zone.len()-1);
+pub async fn get_instance_metadata() -> EC2Metadata {
 
-
-    {
-        instance_id: instance_id.to_string(),
-        availability_zone: availability_zone.to_string(),
+    let INSTANCE_ID_URL = " http://169.254.169.254/latest/meta-data/instance-id".to_string();
+    let AZ_URL = "http://169.254.169.254/latest/meta-data/placement/availability-zone/".to_string();
+    let (i_id, a_z_resp) = join!(curl_url(&INSTANCE_ID_URL),curl_url(&AZ_URL));
+    let mut a_z = String::new();
+    a_z = a_z_resp.unwrap().clone().to_string();
+    let mut region = a_z.clone().to_string();
+    region.truncate(region.len() - 1);
+    EC2Metadata {
+        instance_id: i_id.unwrap().to_string(), 
+        availability_zone: a_z.to_string(),
         region: region.to_string()
     }
-}
+}   

@@ -18,11 +18,12 @@ use std::default::Default;
 use std::{thread, time};
 use sysinfo::{DiskExt, SystemExt};
 use std::future::Future;
+use std::io::Read;
 
-use crate::helpers::setup_aws_credentials::{fetch_credentials,EC2Metadata};
+use crate::helpers::setup_aws_credentials::{fetch_credentials,EC2Metadata,get_instance_metadata};
 use crate::helpers::setup_cli::CliOptions;
 use crate::helpers::setup_tokio::create_runtime;
-
+use std::io::Read;
 
 fn calculate_next_wolume_size(last_size:int64) -> int64 {
     // Strat 10x because of the limited amount of EBS volumes could be attached
@@ -231,6 +232,15 @@ async fn create_and_attach_volume(cli_options:CliOptions) -> String {
     volume_id_holder
 
 }
+
+async fn curl_url(url: &str) -> Result<String,reqwest::Error> {
+    let resp = reqwest::get(url)
+        .await?
+        .text()
+        .await?;
+    Ok(resp)
+}
+
 
 fn make_volumes_available(cli_options: CliOptions) {
     //check size

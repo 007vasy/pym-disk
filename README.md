@@ -37,7 +37,7 @@ Rust based ebs volume autoscaling tool for AWS with striping
 ## Pre-reqs
 
 yum update -y
-yum install -y btrfs-progs xfsprogs e4fsprogs lvm2
+yum install -y btrfs-progs xfsprogs e4fsprogs lvm2 openssl-devel
 
 ## Setup
 
