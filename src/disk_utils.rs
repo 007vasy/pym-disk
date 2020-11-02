@@ -25,7 +25,9 @@ use crate::helpers::setup_cli::CliOptions;
 use crate::helpers::setup_tokio::create_runtime;
 use std::io::Read;
 
-fn calculate_next_wolume_size(last_size:int64) -> int64 {
+use std::iter::Sum;
+
+fn calculate_next_volume_size(last_size:int64) -> int64 {
     // Strat 10x because of the limited amount of EBS volumes could be attached
     last_size * 10
 }
@@ -73,7 +75,7 @@ mod tests {
 
 }
 
-fn extension_is_needed() -> bool {
+fn extension_is_needed(pym_state: &CliOptions) -> bool {
     let sys = System::new();
 
     match sys.mounts() {
@@ -145,18 +147,18 @@ async fn volume_state_waiter(client:&Ec2Client, volume_id:String, desired_state:
     
 }
 
-async fn create_and_attach_volume(cli_options:CliOptions) -> String {
-    let instance_id = "i-0cb68a3d1a173fe0c"; //TODO get it from underlying EC2
-    let availability_zone = "ap-southeast-2b"; //TODO get it from underlying EC2
-    let device_name = "/dev/sdh"; //Todo get it from cli parameters
-    let volume_type = "gp2"; //Todo get it from cli parameters
-    let size = 8; //Todo get it from cli + algs
+async fn create_and_attach_volume(pym_state:CliOptions) -> String {
+    let instance_id = pym_state.instance_id
+    let availability_zone = pym_state.availability_zone
+    let device_name = pym_state.last_used_device
+    let volume_type = pym_state.volume_type
+    let size = pym_state.min_disk_size; 
     let cred_provider = fetch_credentials().await;
     let client = Ec2Client::new_with(
         HttpClient::new().unwrap(),
         cred_provider,
-        Region::ApSoutheast2, //TODO get it from underlying EC2
-    );
+        Region::FromStr(pym_state.region), 
+);
 
     let mut volume_id_holder = String::new();
     let create_volume_request = CreateVolumeRequest {
@@ -242,45 +244,63 @@ async fn curl_url(url: &str) -> Result<String,reqwest::Error> {
 }
 
 
-fn make_volumes_available(cli_options: CliOptions) {
-    //check size
-    create_and_attach_volume(cli_options);
-    //calculate next size
+fn make_volumes_available(pym_state: &CliOptions) -> CliOptions{
+
+    for x in 0..pym_state.striping_level {
+        pym_state.first_device = generate_next_device_name(pym_state.first_device)
+        create_and_attach_volume(pym_state);
+    }
+    pym_state
+    
 }
 
-fn setup(cli_options: CliOptions) {
-    get_instance_metadata()
-    // add instance metadata to CliOptions
-    make_volumes_available(cli_options);
+fn setup(pym_state: &CliOptions) -> CliOptions{
+    let mut _pym_state = pym_state.clone();
+    _pym_state.ec2_metadata = get_instance_metadata();
+    _pym_state = make_volumes_available(_pym_state);
     // vgcreate vg /dev/sdb /dev/sdc
     // lvcreate -n stripe -l +100%FREE -i 2 vg
     // mkdir /stratch
     // mkfs.ext4 /dev/vg/stripe
     // mount /dev/vg/stripe /stratch
+
+    
+    _pym_state
+
 }
 
 
-fn extend_mount_point(cli_options: CliOptions) {
-    make_volumes_available(cli_options)
-    // vgextend vg /dev/sdd /dev/sde
-    // lvextend vg/stripe -l +100%FREE --resizefs
+fn extend_mount_point(pym_state: &CliOptions) -> CliOptions {
+    let mut _pym_state = cli_options.clone();
+    //calculate next size
+    _pym_state.disk_sizes.push(pym_state.min_disk_size)
+    _pym_state.min_disk_size = calculate_next_volume_size(pym_state.min_disk_size)
+    if (Sum(_pym_state.disk_sizes) + _pym_state.min_disk_size) * _pym_state.striping_level < _pym_state.maximal_capacity {
+        make_volumes_available(&_pym_state)
+        // vgextend vg /dev/sdd /dev/sde
+        // lvextend vg/stripe -l +100%FREE --resizefs
+    } else {
+        println!("Maximal Capacity Reached!");
+    }
+
+    _pym_state
 }
 
 pub fn pym_disk_handler(cli_options: CliOptions) {
     // we use tokio runtime for various async activity
     let (mut _rt, _rt_msg) = create_runtime();
 
-    _rt.block_on(setup(cli_args);
+    let mut pym_state = _rt.block_on(setup(&cli_args));
 
     if cli_options.oneshot {
         // TODO: Coloring, loading, other fancy stuff
         println!(">>> Pym Disk is in One Shot Mode! <<<");
     } else {
         println!(">>> Pym Disk is in Watch Dog Mode! <<<");
-        let watchdog_rest = time::Duration::from_seconds(cli.poll);
+        let watchdog_rest = time::Duration::from_seconds(&pym_state.poll);
         loop {
-            if extension_is_needed() {
-                _rt.block_on(extend_mount_point(cli_options);
+            if extension_is_needed(&pym_state) {
+                pym_state = _rt.block_on(extend_mount_point(&pym_state);
             }
             thread::sleep(watchdog_rest);
         }

@@ -38,14 +38,14 @@ pub struct CliOptions {
     pub maximal_capacity: i64,
     #[structopt(short = "s", long = "striping-level", default_value = "8")]
     pub striping_level: i64,
-    // First device name to attach
+    // Last used device name to attach after
     #[structopt(
         short = "d",
         long = "first-device",
         default_value = "/dev/sdb",
         parse(from_os_str)
     )]
-    pub first_device: std::path::PathBuf,
+    pub last_used_device: std::path::PathBuf,
     // Checking available disk space every <p> second
     #[structopt(short = "p", long = "poll", default_value = "10")]
     pub poll: i64,
@@ -63,5 +63,7 @@ pub struct CliOptions {
     #[structopt(short = "i", long = "iops", default_value = "16000")]
     pub iops: i64,
 
-    pub ec2_metadataA: EC2Metadata
+    pub ec2_metadata: EC2Metadata
+
+    pub disk_sizes: Vec<i64>
 }
