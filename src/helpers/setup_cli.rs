@@ -62,8 +62,10 @@ pub struct CliOptions {
     // We are assuming that the user of the cli tool will give in the correct value for the appropiate volume type
     #[structopt(short = "i", long = "iops", default_value = "16000")]
     pub iops: i64,
-
-    pub ec2_metadata: EC2Metadata
-
+    
+    #[structopt(skip)]
+    pub ec2_metadata: crate::helpers::setup_aws_credentials::EC2Metadata,
+    
+    #[structopt(skip)]
     pub disk_sizes: Vec<i64>
 }

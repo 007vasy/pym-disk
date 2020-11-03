@@ -6,18 +6,27 @@ use rusoto_credential::{
     ProvideAwsCredentials,
 };
 
-use curl::easy::Easy;
+use std::io::Read;
+use std::time::Duration;
 
-struct EC2Metadata {
+#[derive(Debug)]
+pub struct EC2Metadata {
     instance_id: String,
     availability_zone: String,
     region: String,
 }
 
-use std::io::Read;
-use std::time::Duration;
 
-async fn fetch_credentials() -> ProvideAwsCredentials{
+pub impl std::default::Default::default for EC2Metadata {
+    fn default() -> Self {
+        instance_id: "",
+        availability_zone: "",
+        region: ""
+    }
+}
+
+
+pub async fn fetch_credentials() -> ProvideAwsCredentials{
     //let profile_name = "pym-disk";
     //let profile_name = "default";
 
@@ -50,12 +59,6 @@ async fn curl_url(url: &str) -> Result<String,reqwest::Error> {
         .text()
         .await?;
     Ok(resp)
-}
-
-pub struct EC2Metadata {
-    instance_id: String,
-    availability_zone: String,
-    region: String,
 }
 
 pub async fn get_instance_metadata() -> EC2Metadata {

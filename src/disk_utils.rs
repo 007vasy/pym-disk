@@ -87,9 +87,15 @@ fn extension_is_needed(pym_state: &CliOptions) -> bool {
                         mount.fs_mounted_on, mount.avail, mount.total, saturating_sub_bytes(mount.total, mount.avail) < mount.avail);
                     return saturating_sub_bytes(mount.total, mount.avail) < mount.avail
                 }
-            }
+            }             
+            
+            println("no matchig mount point found!")
+            return false
         }
-        Err(x) => println!("\nMounts: error: {}", x)
+        Err(x) => {
+            println!("\nMounts: error: {}", x)
+            return false
+        }
     }
 
 }
@@ -148,10 +154,10 @@ async fn volume_state_waiter(client:&Ec2Client, volume_id:String, desired_state:
 }
 
 async fn create_and_attach_volume(pym_state:CliOptions) -> String {
-    let instance_id = pym_state.instance_id
-    let availability_zone = pym_state.availability_zone
-    let device_name = pym_state.last_used_device
-    let volume_type = pym_state.volume_type
+    let instance_id = pym_state.instance_id;
+    let availability_zone = pym_state.availability_zone;
+    let device_name = pym_state.last_used_device;
+    let volume_type = pym_state.volume_type;
     let size = pym_state.min_disk_size; 
     let cred_provider = fetch_credentials().await;
     let client = Ec2Client::new_with(
@@ -244,17 +250,17 @@ async fn curl_url(url: &str) -> Result<String,reqwest::Error> {
 }
 
 
-fn make_volumes_available(pym_state: &CliOptions) -> CliOptions{
-
+async fn make_volumes_available(pym_state: &CliOptions) -> CliOptions{
+    // join
     for x in 0..pym_state.striping_level {
-        pym_state.first_device = generate_next_device_name(pym_state.first_device)
+        pym_state.first_device = generate_next_device_name(pym_state.first_device);
         create_and_attach_volume(pym_state);
     }
     pym_state
     
 }
 
-fn setup(pym_state: &CliOptions) -> CliOptions{
+async fn setup(pym_state: &CliOptions) -> CliOptions{
     let mut _pym_state = pym_state.clone();
     _pym_state.ec2_metadata = get_instance_metadata();
     _pym_state = make_volumes_available(_pym_state);
@@ -270,13 +276,13 @@ fn setup(pym_state: &CliOptions) -> CliOptions{
 }
 
 
-fn extend_mount_point(pym_state: &CliOptions) -> CliOptions {
+async fn extend_mount_point(pym_state: &CliOptions) -> CliOptions {
     let mut _pym_state = cli_options.clone();
     //calculate next size
-    _pym_state.disk_sizes.push(pym_state.min_disk_size)
-    _pym_state.min_disk_size = calculate_next_volume_size(pym_state.min_disk_size)
+    _pym_state.disk_sizes.push(pym_state.min_disk_size);
+    _pym_state.min_disk_size = calculate_next_volume_size(pym_state.min_disk_size);
     if (Sum(_pym_state.disk_sizes) + _pym_state.min_disk_size) * _pym_state.striping_level < _pym_state.maximal_capacity {
-        make_volumes_available(&_pym_state)
+        make_volumes_available(&_pym_state).await;
         // vgextend vg /dev/sdd /dev/sde
         // lvextend vg/stripe -l +100%FREE --resizefs
     } else {
@@ -297,7 +303,7 @@ pub fn pym_disk_handler(cli_options: CliOptions) {
         println!(">>> Pym Disk is in One Shot Mode! <<<");
     } else {
         println!(">>> Pym Disk is in Watch Dog Mode! <<<");
-        let watchdog_rest = time::Duration::from_seconds(&pym_state.poll);
+        let watchdog_rest = time::Duration::from_secs(pym_state.poll as u64);
         loop {
             if extension_is_needed(&pym_state) {
                 pym_state = _rt.block_on(extend_mount_point(&pym_state);
