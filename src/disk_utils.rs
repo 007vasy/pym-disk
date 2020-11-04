@@ -16,7 +16,7 @@ use rusoto_ec2::{
 
 use std::default::Default;
 use std::{thread, time};
-use sysinfo::{DiskExt, SystemExt};
+use systemstat::{saturating_sub_bytes, Platform, System};
 use std::future::Future;
 use std::io::Read;
 
@@ -277,7 +277,7 @@ async fn setup(pym_state: &CliOptions) -> CliOptions{
 
 
 async fn extend_mount_point(pym_state: &CliOptions) -> CliOptions {
-    let mut _pym_state = cli_options.clone();
+    let mut _pym_state = pym_state.clone();
     //calculate next size
     _pym_state.disk_sizes.push(pym_state.min_disk_size);
     _pym_state.min_disk_size = calculate_next_volume_size(pym_state.min_disk_size);
@@ -296,7 +296,7 @@ pub fn pym_disk_handler(cli_options: CliOptions) {
     // we use tokio runtime for various async activity
     let (mut _rt, _rt_msg) = create_runtime();
 
-    let mut pym_state = _rt.block_on(setup(&cli_args));
+    let mut pym_state = _rt.block_on(setup(&cli_options));
 
     if cli_options.oneshot {
         // TODO: Coloring, loading, other fancy stuff

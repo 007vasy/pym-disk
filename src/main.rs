@@ -6,7 +6,7 @@ mod helpers {
 mod disk_utils;
 
 use disk_utils::pym_disk_handler;
-use helpers::setup_cli::Cli;
+use helpers::setup_cli::CliOptions;
 
 use structopt::StructOpt;
 
