@@ -160,7 +160,10 @@ async fn volume_state_waiter(
     }
 }
 
-async fn create_and_attach_volume(pym_state: &CliOptions, last_used_device: std::path::PathBuf) -> Result<(), ()> {
+async fn create_and_attach_volume(
+    pym_state: &CliOptions,
+    last_used_device: std::path::PathBuf,
+) -> Result<(), ()> {
     let instance_id = &pym_state.ec2_metadata.instance_id;
     let availability_zone = &pym_state.ec2_metadata.availability_zone;
     let device_name = last_used_device.to_str().unwrap().to_string();
@@ -276,21 +279,16 @@ async fn make_volumes_available(mut pym_state: CliOptions) -> (CliOptions, Vec<S
     {
         for x in 0..pym_state.striping_level {
             last_used_device = std::path::PathBuf::from(
-                generate_next_device_name(
-                    last_used_device
-                        .to_str()
-                        .unwrap()
-                        .to_string()
-                        .clone(),
-                )
-                .unwrap(),
-            );           
+                generate_next_device_name(last_used_device.to_str().unwrap().to_string().clone())
+                    .unwrap(),
+            );
 
-            volume_futures.push(Box::pin(create_and_attach_volume(&pym_state, last_used_device.clone())));
+            volume_futures.push(Box::pin(create_and_attach_volume(
+                &pym_state,
+                last_used_device.clone(),
+            )));
             //create_and_attach_volume(&pym_state).await;
-            device_names.push(pym_state_clone.last_used_device.to_str().unwrap().to_string());
-
-
+            device_names.push(last_used_device.to_str().unwrap().to_string().clone());
         }
         join_all(volume_futures).await;
     } else {
@@ -343,7 +341,10 @@ async fn setup(mut pym_state: CliOptions) -> CliOptions {
 
     // mkfs.<fs type> /dev/vg/stripe
     // mkfs.ext4 /dev/vg/stripe
-    let status = Command::new("mkfs.".to_owned() + &pym_state.file_system.to_string()).arg("/dev/vg/stripe").status().unwrap();
+    let status = Command::new("mkfs.".to_owned() + &pym_state.file_system.to_string())
+        .arg("/dev/vg/stripe")
+        .status()
+        .unwrap();
 
     // mount /dev/vg/stripe <mount point>
     // mount /dev/vg/stripe /stratch
