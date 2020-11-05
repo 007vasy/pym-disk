@@ -33,10 +33,19 @@ Rust based ebs volume autoscaling tool for AWS with striping
 
 ## Pre-reqs on an AWS machine
 
-yum update -y
-yum install -y btrfs-progs xfsprogs e4fsprogs lvm2 openssl-devel gcc
+`yum update -y && yum install -y btrfs-progs xfsprogs e4fsprogs lvm2`
 
 - the instance is required to have no trace of other scaling activity
+
+## Dev setup
+
+1. `yum update -y && yum install -y btrfs-progs xfsprogs e4fsprogs lvm2 openssl-devel gcc git`
+1. `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
+1. `source $HOME/.cargo/env`
+1. `rustup default nightly`
+1. `git clone https://github.com/007vasy/pym-disk.git`
+1. `cd pym-disk`
+1. `cargo check`
 
 ## Notes for scalable striping
 
@@ -44,9 +53,9 @@ yum install -y btrfs-progs xfsprogs e4fsprogs lvm2 openssl-devel gcc
 
 - vgcreate vg /dev/sdb /dev/sdc
 - lvcreate -n stripe -l +100%FREE -i 2 vg
-- mkdir /stratch
+- mkdir /scratch
 - mkfs.ext4 /dev/vg/stripe
-- mount /dev/vg/stripe /stratch
+- mount /dev/vg/stripe /scratch
 
 ### Extension
 

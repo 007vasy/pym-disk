@@ -24,7 +24,7 @@ pub struct CliOptions {
     #[structopt(
         short = "m",
         long = "mount-point",
-        default_value = "/stratch",
+        default_value = "/scratch",
         parse(from_os_str)
     )]
     pub mount_point: std::path::PathBuf,

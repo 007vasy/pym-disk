@@ -333,7 +333,7 @@ async fn setup(mut pym_state: CliOptions) -> CliOptions {
         .unwrap();
 
     // mkdir <mouth point>
-    // mkdir /stratch
+    // mkdir /scratch
     let status = Command::new("mkdir")
         .arg(pym_state.mount_point.to_str().unwrap().to_string())
         .status()
@@ -347,7 +347,7 @@ async fn setup(mut pym_state: CliOptions) -> CliOptions {
         .unwrap();
 
     // mount /dev/vg/stripe <mount point>
-    // mount /dev/vg/stripe /stratch
+    // mount /dev/vg/stripe /scratch
     let status = Command::new("mount")
         .arg("/dev/vg/stripe")
         .arg(pym_state.mount_point.to_str().unwrap().to_string())
