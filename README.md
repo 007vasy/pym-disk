@@ -6,6 +6,8 @@ Rust based ebs volume autoscaling tool for AWS with striping
 
 # TODOS
 
+- document how to use
+- document how to start developing
 - discover last device, rather than getting it from the cli
 - speed test with s3bfg
 - input checking, everything is higher than 0, min < max, stripe % 2 == 0, min \* 2^x == max? x>=1
