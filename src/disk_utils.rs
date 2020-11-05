@@ -7,12 +7,12 @@ use rusoto_ec2::{
 use std::str::FromStr;
 
 use futures::future::join_all;
+use futures::future::BoxFuture;
 use std::default::Default;
 use std::future::Future;
 use std::io::Read;
 use std::iter::Sum;
 use std::{thread, time};
-use futures::future::BoxFuture;
 use systemstat::{saturating_sub_bytes, Platform, System};
 
 use crate::helpers::setup_aws_credentials::{
@@ -20,6 +20,8 @@ use crate::helpers::setup_aws_credentials::{
 };
 use crate::helpers::setup_cli::CliOptions;
 use crate::helpers::setup_tokio::create_runtime;
+
+use std::process::Command;
 
 fn calculate_next_volume_size(last_size: u64) -> u64 {
     // Strat 10x because of the limited amount of EBS volumes could be attached
@@ -263,29 +265,32 @@ async fn curl_url(url: &str) -> Result<String, reqwest::Error> {
 
 async fn make_volumes_available(mut pym_state: CliOptions) -> (CliOptions, Vec<String>) {
     let mut device_names: Vec<String> = vec![];
-    let mut volume_futures: Vec<BoxFuture<Result<(),()>>> = vec![];
+    let mut volume_futures: Vec<BoxFuture<Result<(), ()>>> = vec![];
     // check if there is enough space based on the config
     if ((pym_state.disk_sizes.clone().into_iter().sum::<u64>() + pym_state.min_disk_size)
         * pym_state.striping_level)
         < pym_state.maximal_capacity
     {
-        // TODO async join
-        
         for x in 0..pym_state.striping_level {
+            let last_used_device = std::path::PathBuf::from(
+                generate_next_device_name(
+                    pym_state
+                        .last_used_device
+                        .to_str()
+                        .unwrap()
+                        .to_string()
+                        .clone(),
+                )
+                .unwrap(),
+            );
 
-            
-            let last_used_device  = std::path::PathBuf::from(
-                generate_next_device_name(pym_state.last_used_device.to_str().unwrap().to_string().clone())
-                    .unwrap(),
-            );    
-                        
             volume_futures.push(Box::pin(create_and_attach_volume(&pym_state)));
             //create_and_attach_volume(&pym_state).await;
             device_names.push(pym_state.last_used_device.to_str().unwrap().to_string());
             let mut pym_state = pym_state.clone();
             pym_state.last_used_device = last_used_device;
         }
-    join_all(volume_futures).await;
+        join_all(volume_futures).await;
     } else {
         println!("Maximal Capacity Reached!");
     }
@@ -301,13 +306,46 @@ async fn setup(mut pym_state: CliOptions) -> CliOptions {
     let mut device_names: Vec<String>;
     pym_state.ec2_metadata = get_instance_metadata().await;
     let resp = make_volumes_available(pym_state).await;
-    pym_state = resp.0;
+    let pym_state = resp.0;
     let mut device_names: Vec<String> = resp.1;
+
+    // vgcreate vg <device names list>
     // vgcreate vg /dev/sdb /dev/sdc
+    Command::new("vgcreate")
+        .arg("vg")
+        .args(&device_names)
+        .spawn();
+
+    // lvcreate -n stripe -l +100%FREE -i <striping level> vg
     // lvcreate -n stripe -l +100%FREE -i 2 vg
+    Command::new("lvcreate")
+        .args(&[
+            "-n",
+            "stripe",
+            "-l",
+            "+100%FREE",
+            "-i",
+            &pym_state.striping_level.to_string(),
+            "vg",
+        ])
+        .spawn();
+
+    // mkdir <mouth point>
     // mkdir /stratch
+    Command::new("mkdir")
+        .arg(pym_state.mount_point.to_str().unwrap().to_string())
+        .spawn();
+
+    // mkfs.<fs type> /dev/vg/stripe
     // mkfs.ext4 /dev/vg/stripe
+    Command::new("mkfs").arg("/dev/vg/stripe").spawn();
+
+    // mount /dev/vg/stripe <mount point>
     // mount /dev/vg/stripe /stratch
+    Command::new("mkfs.".to_owned() + &pym_state.file_system.to_string())
+        .arg("/dev/vg/stripe")
+        .arg(pym_state.mount_point.to_str().unwrap().to_string())
+        .spawn();
 
     pym_state
 }
@@ -316,8 +354,19 @@ async fn extend_mount_point(mut pym_state: CliOptions) -> CliOptions {
     let resp = make_volumes_available(pym_state).await;
     pym_state = resp.0;
     let mut device_names: Vec<String> = resp.1;
+
+    // vgextend vg <device names list>
     // vgextend vg /dev/sdd /dev/sde
+    Command::new("vgextend")
+        .arg("vg")
+        .args(&device_names)
+        .spawn();
+
     // lvextend vg/stripe -l +100%FREE --resizefs
+    // lvextend vg/stripe -l +100%FREE --resizefs
+    Command::new("lvextend")
+        .args(&["vg/stripe", "-l", "+100%FREE", "--resizefs"])
+        .spawn();
 
     pym_state
 }
