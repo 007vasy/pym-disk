@@ -34,7 +34,7 @@ pub struct CliOptions {
     // Assumption: all size imput should come in GiB, abbreviation: high
     #[structopt(short = "h", long = "max", default_value = "16")]
     pub maximal_capacity: u64,
-    #[structopt(short = "s", long = "striping-level", default_value = "8")]
+    #[structopt(short = "s", long = "striping-level", default_value = "2")]
     pub striping_level: u64,
     // Last used device name to attach after
     #[structopt(

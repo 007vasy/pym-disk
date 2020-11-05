@@ -269,7 +269,7 @@ async fn make_volumes_available(mut pym_state: CliOptions) -> (CliOptions, Vec<S
     // check if there is enough space based on the config
     if ((pym_state.disk_sizes.clone().into_iter().sum::<u64>() + pym_state.min_disk_size)
         * pym_state.striping_level)
-        < pym_state.maximal_capacity
+        <= pym_state.maximal_capacity
     {
         for x in 0..pym_state.striping_level {
             let last_used_device = std::path::PathBuf::from(
