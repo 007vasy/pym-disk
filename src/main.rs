@@ -1,20 +1,24 @@
+#[macro_use]
+extern crate custom_derive;
+#[macro_use]
+extern crate enum_derive;
 mod helpers {
     pub mod setup_aws_credentials;
     pub mod setup_cli;
     pub mod setup_tokio;
 }
 mod disk_utils;
-
-use disk_utils::pym_disk_handler;
-use helpers::setup_cli::CliOptions;
-
+use crate::disk_utils::pym_disk_handler;
 use structopt::StructOpt;
 
 fn main() {
-    let args = CliOptions::from_args();
+    let args = helpers::setup_cli::CliOptions::from_args();
     println!("Mount point: {:?}", args.mount_point);
     println!("Starting disk size: {:?}", args.min_disk_size);
-    println!("Maximal overall available size: {:?}", args.maximal_capacity);
+    println!(
+        "Maximal overall available size: {:?}",
+        args.maximal_capacity
+    );
     println!("Striping (Raid 0) level: {:?}", args.striping_level);
     println!("Polling frequency: {:?}", args.poll);
     println!("OneShotMode is {:?}", args.oneshot);
@@ -24,4 +28,3 @@ fn main() {
 
     pym_disk_handler(args);
 }
-

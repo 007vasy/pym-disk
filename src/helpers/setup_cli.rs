@@ -1,9 +1,7 @@
 use structopt::StructOpt;
-#[macro_use] extern crate custom_derive;
-#[macro_use] extern crate enum_derive;
 
 custom_derive! {
-    #[derive(Debug, PartialEq, EnumDisplay, EnumFromStr)]
+    #[derive(Debug, PartialEq, EnumDisplay, EnumFromStr, Copy, Clone)]
     pub enum VolumeType {
         gp2,
         io1,
@@ -12,7 +10,7 @@ custom_derive! {
 }
 
 custom_derive! {
-    #[derive(Debug, PartialEq, EnumDisplay, EnumFromStr)]
+    #[derive(Debug, PartialEq, EnumDisplay, EnumFromStr, Copy, Clone)]
     pub enum FileSystem {
         btrfs,
         xfs,
@@ -20,7 +18,7 @@ custom_derive! {
     }
 }
 
-#[derive(StructOpt)]
+#[derive(StructOpt, Clone)]
 pub struct CliOptions {
     // Mountpoint to attach the volumes
     #[structopt(
@@ -32,12 +30,12 @@ pub struct CliOptions {
     pub mount_point: std::path::PathBuf,
     // Assumption: all size imput should come in GiB, abbreviation: low
     #[structopt(short = "l", long = "min", default_value = "4")]
-    pub min_disk_size: i64,
+    pub min_disk_size: u64,
     // Assumption: all size imput should come in GiB, abbreviation: high
     #[structopt(short = "h", long = "max", default_value = "16")]
-    pub maximal_capacity: i64,
+    pub maximal_capacity: u64,
     #[structopt(short = "s", long = "striping-level", default_value = "8")]
-    pub striping_level: i64,
+    pub striping_level: u64,
     // Last used device name to attach after
     #[structopt(
         short = "d",
@@ -48,11 +46,11 @@ pub struct CliOptions {
     pub last_used_device: std::path::PathBuf,
     // Checking available disk space every <p> second
     #[structopt(short = "p", long = "poll", default_value = "10")]
-    pub poll: i64,
+    pub poll: u64,
     // No polling, just runnig pym-disk once (useful for creating desired volume setup)
     #[structopt(short, long)]
     pub oneshot: bool,
-    
+
     #[structopt(short = "t", long = "volume_type", default_value = "gp2")]
     pub volume_type: VolumeType,
 
@@ -61,11 +59,11 @@ pub struct CliOptions {
 
     // We are assuming that the user of the cli tool will give in the correct value for the appropiate volume type
     #[structopt(short = "i", long = "iops", default_value = "16000")]
-    pub iops: i64,
-    
+    pub iops: u64,
+
     #[structopt(skip)]
     pub ec2_metadata: crate::helpers::setup_aws_credentials::EC2Metadata,
-    
+
     #[structopt(skip)]
-    pub disk_sizes: Vec<i64>
+    pub disk_sizes: Vec<u64>,
 }
