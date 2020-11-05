@@ -288,7 +288,7 @@ async fn make_volumes_available(mut pym_state: CliOptions) -> (CliOptions, Vec<S
 
             let mut pym_state_clone = pym_state.clone();
             pym_state_clone.last_used_device = last_used_device.clone();
-            volume_futures.push(Box::pin(create_and_attach_volume(&pym_state)));
+            volume_futures.push(Box::pin(create_and_attach_volume(&pym_state_clone)));
             //create_and_attach_volume(&pym_state).await;
             device_names.push(pym_state.last_used_device.to_str().unwrap().to_string());
 
