@@ -1,5 +1,4 @@
 use rusoto_core::{HttpClient, Region};
-use rusoto_credential::StaticProvider;
 use rusoto_ec2::{
     AttachVolumeRequest, CreateVolumeRequest, DescribeVolumesRequest,
     EbsInstanceBlockDeviceSpecification, Ec2, Ec2Client, InstanceBlockDeviceMappingSpecification,
@@ -13,6 +12,7 @@ use std::future::Future;
 use std::io::Read;
 use std::iter::Sum;
 use std::{thread, time};
+use futures::future::BoxFuture;
 use systemstat::{saturating_sub_bytes, Platform, System};
 
 use crate::helpers::setup_aws_credentials::{
@@ -263,24 +263,29 @@ async fn curl_url(url: &str) -> Result<String, reqwest::Error> {
 
 async fn make_volumes_available(mut pym_state: CliOptions) -> (CliOptions, Vec<String>) {
     let mut device_names: Vec<String> = vec![];
-    //let mut volume_futures: Vec<Future<Output=Result<(),()>>> = Vec::with_capacity(pym_state.striping_level as usize);
+    let mut volume_futures: Vec<BoxFuture<Result<(),()>>> = vec![];
     // check if there is enough space based on the config
     if ((pym_state.disk_sizes.clone().into_iter().sum::<u64>() + pym_state.min_disk_size)
         * pym_state.striping_level)
         < pym_state.maximal_capacity
     {
         // TODO async join
-
+        
         for x in 0..pym_state.striping_level {
-            pym_state.last_used_device = std::path::PathBuf::from(
-                generate_next_device_name(pym_state.last_used_device.to_str().unwrap().to_string())
+
+            
+            let last_used_device  = std::path::PathBuf::from(
+                generate_next_device_name(pym_state.last_used_device.to_str().unwrap().to_string().clone())
                     .unwrap(),
-            );
-            //volume_futures.push(create_and_attach_volume(&pym_state));
-            create_and_attach_volume(&pym_state).await;
+            );    
+                        
+            volume_futures.push(Box::pin(create_and_attach_volume(&pym_state)));
+            //create_and_attach_volume(&pym_state).await;
             device_names.push(pym_state.last_used_device.to_str().unwrap().to_string());
+            let mut pym_state = pym_state.clone();
+            pym_state.last_used_device = last_used_device;
         }
-    //join_all(volume_futures);
+    join_all(volume_futures);
     } else {
         println!("Maximal Capacity Reached!");
     }

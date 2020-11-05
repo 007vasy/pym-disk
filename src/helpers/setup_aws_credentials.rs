@@ -30,7 +30,7 @@ pub async fn fetch_credentials() -> StaticProvider {
         .credentials()
         .await
         .unwrap();
-    let cred_provider: StaticProvider = StaticProvider::new(
+    let cred_provider = StaticProvider::new(
         creds.aws_access_key_id().to_string(),
         creds.aws_secret_access_key().to_string(),
         creds.token().clone(),
