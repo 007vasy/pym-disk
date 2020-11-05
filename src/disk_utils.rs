@@ -285,7 +285,7 @@ async fn make_volumes_available(mut pym_state: CliOptions) -> (CliOptions, Vec<S
             let mut pym_state = pym_state.clone();
             pym_state.last_used_device = last_used_device;
         }
-    join_all(volume_futures);
+    join_all(volume_futures).await;
     } else {
         println!("Maximal Capacity Reached!");
     }
