@@ -21,7 +21,7 @@ use crate::helpers::setup_aws_credentials::{
 use crate::helpers::setup_cli::CliOptions;
 use crate::helpers::setup_tokio::create_runtime;
 
-use std::process::Command;
+use runas::Command;
 
 fn calculate_next_volume_size(last_size: u64) -> u64 {
     // Strat 10x because of the limited amount of EBS volumes could be attached
@@ -77,7 +77,7 @@ fn extension_is_needed(pym_state: &CliOptions) -> bool {
         Ok(mounts) => {
             println!("\nMounts:");
             for mount in mounts.iter() {
-                if mount.fs_mounted_on == "/" {
+                if mount.fs_mounted_on == pym_state.mount_point.to_str().unwrap() {
                     println!(
                         "mount point: > {} < (available {} of {}) Extra space needed: {}",
                         mount.fs_mounted_on,
@@ -311,14 +311,15 @@ async fn setup(mut pym_state: CliOptions) -> CliOptions {
 
     // vgcreate vg <device names list>
     // vgcreate vg /dev/sdb /dev/sdc
-    Command::new("vgcreate")
+    let status = Command::new("vgcreate")
         .arg("vg")
         .args(&device_names)
-        .spawn();
+        .status()
+        .unwrap();
 
     // lvcreate -n stripe -l +100%FREE -i <striping level> vg
     // lvcreate -n stripe -l +100%FREE -i 2 vg
-    Command::new("lvcreate")
+    let status = Command::new("lvcreate")
         .args(&[
             "-n",
             "stripe",
@@ -328,24 +329,27 @@ async fn setup(mut pym_state: CliOptions) -> CliOptions {
             &pym_state.striping_level.to_string(),
             "vg",
         ])
-        .spawn();
+        .status()
+        .unwrap();
 
     // mkdir <mouth point>
     // mkdir /stratch
-    Command::new("mkdir")
+    let status = Command::new("mkdir")
         .arg(pym_state.mount_point.to_str().unwrap().to_string())
-        .spawn();
+        .status()
+        .unwrap();
 
     // mkfs.<fs type> /dev/vg/stripe
     // mkfs.ext4 /dev/vg/stripe
-    Command::new("mkfs").arg("/dev/vg/stripe").spawn();
+    let status = Command::new("mkfs").arg("/dev/vg/stripe").status().unwrap();
 
     // mount /dev/vg/stripe <mount point>
     // mount /dev/vg/stripe /stratch
-    Command::new("mkfs.".to_owned() + &pym_state.file_system.to_string())
+    let status = Command::new("mkfs.".to_owned() + &pym_state.file_system.to_string())
         .arg("/dev/vg/stripe")
         .arg(pym_state.mount_point.to_str().unwrap().to_string())
-        .spawn();
+        .status()
+        .unwrap();
 
     pym_state
 }
@@ -357,16 +361,18 @@ async fn extend_mount_point(mut pym_state: CliOptions) -> CliOptions {
 
     // vgextend vg <device names list>
     // vgextend vg /dev/sdd /dev/sde
-    Command::new("vgextend")
+    let status = Command::new("vgextend")
         .arg("vg")
         .args(&device_names)
-        .spawn();
+        .status()
+        .unwrap();
 
     // lvextend vg/stripe -l +100%FREE --resizefs
     // lvextend vg/stripe -l +100%FREE --resizefs
-    Command::new("lvextend")
+    let status = Command::new("lvextend")
         .args(&["vg/stripe", "-l", "+100%FREE", "--resizefs"])
-        .spawn();
+        .status()
+        .unwrap();
 
     pym_state
 }

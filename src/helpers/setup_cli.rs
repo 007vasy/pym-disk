@@ -39,13 +39,13 @@ pub struct CliOptions {
     // Last used device name to attach after
     #[structopt(
         short = "d",
-        long = "first-device",
-        default_value = "/dev/sdb",
+        long = "last-used-device",
+        default_value = "/dev/sda",
         parse(from_os_str)
     )]
     pub last_used_device: std::path::PathBuf,
     // Checking available disk space every <p> second
-    #[structopt(short = "p", long = "poll", default_value = "10")]
+    #[structopt(short = "p", long = "poll", default_value = "60")]
     pub poll: u64,
     // No polling, just runnig pym-disk once (useful for creating desired volume setup)
     #[structopt(short, long)]

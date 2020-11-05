@@ -22,9 +22,9 @@ fn main() {
     println!("Striping (Raid 0) level: {:?}", args.striping_level);
     println!("Polling frequency: {:?}", args.poll);
     println!("OneShotMode is {:?}", args.oneshot);
-    println!("OneShotMode is {:?}", args.volume_type);
-    println!("OneShotMode is {:?}", args.file_system);
-    println!("OneShotMode is {:?}", args.iops);
+    println!("Volume type is {:?}", args.volume_type);
+    println!("File system is {:?}", args.file_system);
+    println!("IOPs is {:?}", args.iops);
 
     pym_disk_handler(args);
 }
