@@ -6,6 +6,7 @@ Rust based ebs volume autoscaling tool for AWS with striping
 
 # TODOS
 
+- discover last device, rather than getting it from the cli
 - speed test with s3bfg
 - input checking, everything is higher than 0, min < max, stripe % 2 == 0, min \* 2^x == max? x>=1
 - add correctly parsed disk paths
@@ -31,11 +32,13 @@ Rust based ebs volume autoscaling tool for AWS with striping
 ## Pre-reqs on an AWS machine
 
 yum update -y
-yum install -y btrfs-progs xfsprogs e4fsprogs lvm2 openssl-devel
+yum install -y btrfs-progs xfsprogs e4fsprogs lvm2 openssl-devel gcc
 
 - the instance is required to have no trace of other scaling activity
 
-## Setup
+## Notes for scalable striping
+
+### Setup
 
 - vgcreate vg /dev/sdb /dev/sdc
 - lvcreate -n stripe -l +100%FREE -i 2 vg
@@ -43,7 +46,7 @@ yum install -y btrfs-progs xfsprogs e4fsprogs lvm2 openssl-devel
 - mkfs.ext4 /dev/vg/stripe
 - mount /dev/vg/stripe /stratch
 
-## Extension
+### Extension
 
 - vgextend vg /dev/sdd /dev/sde
 - lvextend vg/stripe -l +100%FREE --resizefs
