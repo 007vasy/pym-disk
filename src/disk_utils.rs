@@ -83,9 +83,9 @@ fn extension_is_needed(pym_state: &CliOptions) -> bool {
                         mount.fs_mounted_on,
                         mount.avail,
                         mount.total,
-                        saturating_sub_bytes(mount.total, mount.avail) < mount.avail
+                        saturating_sub_bytes(mount.total, mount.avail) > mount.avail
                     );
-                    return saturating_sub_bytes(mount.total, mount.avail) < mount.avail;
+                    return saturating_sub_bytes(mount.total, mount.avail) > mount.avail;
                 }
             }
 
