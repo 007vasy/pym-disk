@@ -341,11 +341,11 @@ async fn setup(mut pym_state: CliOptions) -> CliOptions {
 
     // mkfs.<fs type> /dev/vg/stripe
     // mkfs.ext4 /dev/vg/stripe
-    let status = Command::new("mkfs").arg("/dev/vg/stripe").status().unwrap();
+    let status = Command::new("mkfs.".to_owned() + &pym_state.file_system.to_string()).arg("/dev/vg/stripe").status().unwrap();
 
     // mount /dev/vg/stripe <mount point>
     // mount /dev/vg/stripe /stratch
-    let status = Command::new("mkfs.".to_owned() + &pym_state.file_system.to_string())
+    let status = Command::new("mount")
         .arg("/dev/vg/stripe")
         .arg(pym_state.mount_point.to_str().unwrap().to_string())
         .status()
