@@ -267,7 +267,8 @@ async fn make_volumes_available(mut pym_state: CliOptions) -> (CliOptions, Vec<S
     let mut device_names: Vec<String> = vec![];
     let mut volume_futures: Vec<BoxFuture<Result<(), ()>>> = vec![];
     let mut pym_state_clone = pym_state.clone();
-    let mut last_used_device = std::path::PathBuf::new();
+    let mut last_used_device = pym_state.last_used_device.clone();
+
     // check if there is enough space based on the config
     if ((pym_state.disk_sizes.clone().into_iter().sum::<u64>() + pym_state.min_disk_size)
         * pym_state.striping_level)
@@ -276,20 +277,19 @@ async fn make_volumes_available(mut pym_state: CliOptions) -> (CliOptions, Vec<S
         for x in 0..pym_state.striping_level {
             last_used_device = std::path::PathBuf::from(
                 generate_next_device_name(
-                    pym_state
-                        .last_used_device
+                    last_used_device
                         .to_str()
                         .unwrap()
                         .to_string()
                         .clone(),
                 )
                 .unwrap(),
-            );
-           
+            );           
 
             volume_futures.push(Box::pin(create_and_attach_volume(&pym_state, last_used_device.clone())));
             //create_and_attach_volume(&pym_state).await;
             device_names.push(pym_state_clone.last_used_device.to_str().unwrap().to_string());
+
 
         }
         join_all(volume_futures).await;
