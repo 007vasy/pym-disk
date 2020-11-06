@@ -353,6 +353,14 @@ async fn setup(mut pym_state: CliOptions) -> CliOptions {
         .arg(pym_state.mount_point.to_str().unwrap().to_string())
         .status()
         .unwrap();
+    
+    // chmod a+rw <mount point>
+    // chmod a+rw /scratch
+    let status = Command::new("chmod")
+        .arg("a+rw")
+        .arg(pym_state.mount_point.to_str().unwrap().to_string())
+        .status()
+        .unwrap();
 
     pym_state
 }
