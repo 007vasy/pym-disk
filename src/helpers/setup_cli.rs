@@ -32,7 +32,7 @@ pub struct CliOptions {
     #[structopt(short = "l", long = "min", default_value = "4")]
     pub min_disk_size: u64,
     // Assumption: all size imput should come in GiB, abbreviation: high
-    #[structopt(short = "h", long = "max", default_value = "16")]
+    #[structopt(short = "h", long = "max", default_value = "100")]
     pub maximal_capacity: u64,
     #[structopt(short = "s", long = "striping-level", default_value = "2")]
     pub striping_level: u64,

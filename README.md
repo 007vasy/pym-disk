@@ -6,6 +6,7 @@ Rust based ebs volume autoscaling tool for AWS with striping
 
 # TODOS
 
+- sudo chmod a+rw /scratch
 - document how to use
 - document how to start developing
 - discover last device, rather than getting it from the cli

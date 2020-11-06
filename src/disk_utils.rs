@@ -361,7 +361,7 @@ async fn extend_mount_point(mut pym_state: CliOptions) -> CliOptions {
     let resp = make_volumes_available(pym_state).await;
     pym_state = resp.0;
     let mut device_names: Vec<String> = resp.1;
-
+    println!("{:?}", device_names);
     // vgextend vg <device names list>
     // vgextend vg /dev/sdd /dev/sde
     let status = Command::new("vgextend")
