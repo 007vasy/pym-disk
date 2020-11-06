@@ -169,6 +169,7 @@ async fn create_and_attach_volume(
     let device_name = last_used_device.to_str().unwrap().to_string();
     let volume_type = pym_state.volume_type;
     let size = pym_state.min_disk_size;
+    let iops = pym_state.iops;
     let cred_provider = fetch_credentials().await;
     let client = Ec2Client::new_with(
         HttpClient::new().unwrap(),
@@ -181,6 +182,7 @@ async fn create_and_attach_volume(
         availability_zone: availability_zone.to_string(),
         size: Some(size as i64),
         volume_type: Some(volume_type.to_string()),
+        iops: Some(iops as i64),
         tag_specifications: Some(vec![TagSpecification {
             resource_type: Some("volume".to_string()),
             tags: Some(vec![Tag {
@@ -353,7 +355,7 @@ async fn setup(mut pym_state: CliOptions) -> CliOptions {
         .arg(pym_state.mount_point.to_str().unwrap().to_string())
         .status()
         .unwrap();
-    
+
     // chmod a+rw <mount point>
     // chmod a+rw /scratch
     let status = Command::new("chmod")
